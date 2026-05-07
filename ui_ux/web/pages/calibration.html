@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>I-Study | 시선 초점 잡기</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <style>
+    .cal-wrap { display:grid; grid-template-columns: 1fr 380px; gap:24px; }
+    @media (max-width: 980px) { .cal-wrap { grid-template-columns: 1fr; } }
+
+    .video-card { position:relative; background:#0b1320; border-radius:20px; overflow:hidden;
+                  box-shadow: 0 12px 32px rgba(31,42,68,.15); aspect-ratio: 4/3; }
+    #video, #canvas { position:absolute; inset:0; width:100%; height:100%; object-fit: cover; }
+    #video { transform: scaleX(-1); } /* 거울 모드 */
+    #canvas { transform: scaleX(-1); pointer-events:none; }
+
+    .center-cross { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+                    pointer-events:none; }
+    .center-cross::before, .center-cross::after {
+      content:""; position:absolute; background: rgba(85,127,255,.85);
+      box-shadow: 0 0 8px rgba(85,127,255,.6);
+    }
+    .center-cross::before { width: 2px; height: 56px; }
+    .center-cross::after { width: 56px; height: 2px; }
+
+    .face-state { position:absolute; left:14px; top:14px; padding:6px 12px;
+                  background: rgba(255,255,255,.92); border-radius: 999px;
+                  font-weight:700; color:#1f2a44; font-size:13px;
+                  display:flex; align-items:center; gap:8px; }
+    .dot { width:9px; height:9px; border-radius:50%; background:#ff5b5b; }
+    .face-state.ok .dot { background:#3cd07a; }
+
+    .progress-ring { width: 100%; height: 12px; background: #eef2fb; border-radius: 999px; overflow:hidden;
+                     margin: 18px 0 4px; }
+    .progress-ring > div { height:100%; background: linear-gradient(90deg,#557fff,#7aa1ff);
+                           transition: width .25s ease; width: 0%; }
+
+    .step { display:flex; gap:10px; padding:10px 12px; border-radius: 12px;
+            background:#f7f9ff; color:#5b6480; font-size:14px; }
+    .step.active { background:#eaf0ff; color:#1f2a44; font-weight:700; }
+
+    .result-list { list-style:none; padding:0; margin:12px 0 0; }
+    .result-list li { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #e6ecf7; }
+    .result-list b { color:#1f2a44; }
+
+    .pill { display:inline-block; padding:3px 10px; border-radius:999px; background:#eaf0ff;
+            color:#3057ff; font-weight:700; font-size:12px; }
+    .pill.warn { background:#fff3df; color:#a76914; }
+    .pill.ok   { background:#dff5e5; color:#177a3b; }
+  </style>
+</head>
+<body>
+  <div id="topbar"></div>
+
+  <main class="page">
+    <div class="page-header">
+      <h1>🎯 시선 초점 잡기</h1>
+      <p>화면 정중앙을 응시하면 30프레임을 측정해 데스크톱 앱이 사용할 시야각 임계치를 자동으로 계산해요.</p>
+    </div>
+
+    <div class="cal-wrap">
+      <!-- 좌: 웹캠 -->
+      <div class="video-card">
+        <video id="video" playsinline muted></video>
+        <canvas id="canvas"></canvas>
+        <div class="center-cross"></div>
+        <div class="face-state" id="faceState"><span class="dot"></span><span id="faceStateText">카메라 준비 중…</span></div>
+      </div>
+
+      <!-- 우: 가이드 / 결과 -->
+      <div class="card">
+        <h2 style="margin-top:0">진행 상태</h2>
+        <div class="progress-ring"><div id="progressBar"></div></div>
+        <p class="muted"><span id="sampleText">0 / 30 샘플</span> · <span id="statusBadge" class="pill warn">대기</span></p>
+
+        <div style="display:flex; flex-direction:column; gap:8px; margin:14px 0;">
+          <div class="step" id="step1">1. <strong>화면 중앙</strong>의 + 표시를 정면으로 응시</div>
+          <div class="step" id="step2">2. 머리를 천천히 고정한 채로 30프레임 수집</div>
+          <div class="step" id="step3">3. 자동으로 임계치 계산 후 저장</div>
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn-primary" id="btnStart">시작</button>
+          <button class="btn-soft" id="btnStop" disabled>중지</button>
+          <button class="btn-ghost" id="btnReset">기본값으로</button>
+        </div>
+
+        <div id="resultBox" style="margin-top:18px; display:none;">
+          <h3 style="margin:6px 0 4px">측정 결과</h3>
+          <ul class="result-list" id="resultList"></ul>
+          <p class="muted" style="margin-top:8px">데스크톱 앱이 학습 시작 시 이 값을 자동으로 적용합니다.</p>
+        </div>
+
+        <div id="errorBox" class="error-msg" style="display:none; margin-top:12px;"></div>
+      </div>
+    </div>
+
+    <!-- 현재 저장된 값 미리보기 -->
+    <div class="card" style="margin-top:24px;">
+      <h2 style="margin-top:0">현재 저장된 캘리브레이션</h2>
+      <ul class="result-list" id="currentList">
+        <li><span>로딩 중…</span></li>
+      </ul>
+    </div>
+  </main>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/nav.js"></script>
+
+  <!-- MediaPipe Tasks Vision (Face Landmarker) -->
+  <script type="module">
+    Auth.requireLogin();
+    if (Auth.getInfo().role !== "STUDENT") {
+      // 학생만 본인 캘리브레이션 보유. 다른 역할은 홈으로.
+      location.href = "/main";
+    }
+
+    import { FaceLandmarker, FilesetResolver }
+      from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+    // ─── 데스크톱 GazeTracker 와 동일한 랜드마크 ───
+    const NOSE_TIP = 1, LEFT_FACE_EDGE = 234, RIGHT_FACE_EDGE = 454;
+    const FOREHEAD = 10, CHIN = 152;
+    const REQUIRED = 30;
+    const MARGIN = 0.12;   // 데스크톱 기본값
+
+    const $ = (id) => document.getElementById(id);
+    const video    = $("video");
+    const canvas   = $("canvas");
+    const ctx      = canvas.getContext("2d");
+    const faceState= $("faceState");
+    const faceText = $("faceStateText");
+    const progressBar = $("progressBar");
+    const sampleText  = $("sampleText");
+    const statusBadge = $("statusBadge");
+    const btnStart = $("btnStart");
+    const btnStop  = $("btnStop");
+    const btnReset = $("btnReset");
+    const resultBox = $("resultBox");
+    const resultList = $("resultList");
+    const errorBox = $("errorBox");
+
+    let landmarker = null;
+    let stream = null;
+    let running = false;
+    let samplesH = []; // head_ratio
+    let samplesV = []; // vertical_ratio
+    let lastVideoTime = -1;
+
+    function setActiveStep(n) {
+      ["step1","step2","step3"].forEach((id,i) => {
+        $(id).classList.toggle("active", i+1 === n);
+      });
+    }
+
+    function setStatus(text, kind="warn") {
+      statusBadge.textContent = text;
+      statusBadge.className = `pill ${kind}`;
+    }
+
+    function showError(msg) {
+      errorBox.textContent = msg;
+      errorBox.style.display = "block";
+    }
+    function clearError() { errorBox.style.display = "none"; }
+
+    // 데스크톱 _calculate_head_direction 그대로
+    function headRatio(lm) {
+      const n = lm[NOSE_TIP], l = lm[LEFT_FACE_EDGE], r = lm[RIGHT_FACE_EDGE];
+      const cx = (l.x + r.x) / 2;
+      const w  = Math.abs(r.x - l.x);
+      if (w < 0.001) return 0.5;
+      const offset = (n.x - cx) / w;
+      return Math.max(0, Math.min(1, 0.5 + offset));
+    }
+    function verticalRatio(lm) {
+      const n = lm[NOSE_TIP], f = lm[FOREHEAD], c = lm[CHIN];
+      const cy = (f.y + c.y) / 2;
+      const h  = Math.abs(c.y - f.y);
+      if (h < 0.001) return 0.5;
+      const offset = (n.y - cy) / h;
+      return Math.max(0, Math.min(1, 0.5 + offset));
+    }
+
+    async function setupLandmarker() {
+      const fileset = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+      );
+      landmarker = await FaceLandmarker.createFromOptions(fileset, {
+        baseOptions: {
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+          delegate: "GPU",
+        },
+        outputFaceBlendshapes: false,
+        runningMode: "VIDEO",
+        numFaces: 1,
+      });
+    }
+
+    async function setupCamera() {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480, facingMode: "user" }, audio: false,
+      });
+      video.srcObject = stream;
+      await new Promise(res => video.onloadedmetadata = res);
+      await video.play();
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+    }
+
+    function loop() {
+      if (!running) return;
+      if (video.currentTime !== lastVideoTime) {
+        lastVideoTime = video.currentTime;
+        const res = landmarker.detectForVideo(video, performance.now());
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (res.faceLandmarks && res.faceLandmarks.length) {
+          const lm = res.faceLandmarks[0];
+          faceState.classList.add("ok");
+          faceText.textContent = "얼굴 감지됨";
+
+          // 시각화: 코, 좌/우 가장자리, 위/아래 점 표시
+          const dots = [NOSE_TIP, LEFT_FACE_EDGE, RIGHT_FACE_EDGE, FOREHEAD, CHIN];
+          ctx.fillStyle = "rgba(85,127,255,.95)";
+          for (const i of dots) {
+            const p = lm[i];
+            ctx.beginPath();
+            ctx.arc(p.x * canvas.width, p.y * canvas.height, 4, 0, Math.PI*2);
+            ctx.fill();
+          }
+
+          if (samplesH.length < REQUIRED) {
+            samplesH.push(headRatio(lm));
+            samplesV.push(verticalRatio(lm));
+            const n = samplesH.length;
+            progressBar.style.width = (n / REQUIRED * 100) + "%";
+            sampleText.textContent = `${n} / ${REQUIRED} 샘플`;
+            if (n >= REQUIRED) finishCalibration();
+          }
+        } else {
+          faceState.classList.remove("ok");
+          faceText.textContent = "얼굴이 보이지 않아요";
+        }
+      }
+      requestAnimationFrame(loop);
+    }
+
+    async function finishCalibration() {
+      running = false;
+      btnStart.disabled = false;
+      btnStop.disabled = true;
+      setActiveStep(3);
+      setStatus("계산 중…", "warn");
+
+      const mean = arr => arr.reduce((a,b)=>a+b,0) / arr.length;
+      const cH = mean(samplesH);
+      const cV = mean(samplesV);
+      const body = {
+        center_ratio:        +cH.toFixed(4),
+        h_left_threshold:    +Math.max(0.05, cH - MARGIN).toFixed(4),
+        h_right_threshold:   +Math.min(0.95, cH + MARGIN).toFixed(4),
+        v_up_threshold:      +Math.max(0.05, cV - MARGIN).toFixed(4),
+        v_down_threshold:    +Math.min(0.95, cV + MARGIN).toFixed(4),
+      };
+
+      try {
+        const saved = await Api.put("/calibration/me", body);
+        renderResult(saved, true);
+        setStatus("저장 완료 ✅", "ok");
+        renderCurrent(saved);
+      } catch (e) {
+        showError("저장 실패: " + e.message);
+        renderResult(body, false);
+        setStatus("저장 실패", "warn");
+      }
+    }
+
+    function fmt(v, suffix="") { return (typeof v === "number" ? v.toFixed(3) : v) + suffix; }
+
+    function renderResult(d, saved) {
+      resultBox.style.display = "block";
+      resultList.innerHTML = `
+        <li><span>중앙 응시(수평)</span><b>${fmt(d.center_ratio)}</b></li>
+        <li><span>좌 임계 / 우 임계</span><b>${fmt(d.h_left_threshold)} / ${fmt(d.h_right_threshold)}</b></li>
+        <li><span>상 임계 / 하 임계</span><b>${fmt(d.v_up_threshold)} / ${fmt(d.v_down_threshold)}</b></li>
+        ${saved ? '<li><span>상태</span><b style="color:#177a3b">✅ 저장됨</b></li>' : ''}
+      `;
+    }
+
+    function renderCurrent(d) {
+      const list = $("currentList");
+      if (!d || d.calibrated === 0) {
+        list.innerHTML = `<li><span>아직 보정되지 않았어요. 위에서 시작해 주세요.</span></li>`;
+        return;
+      }
+      list.innerHTML = `
+        <li><span>중앙 응시(수평)</span><b>${fmt(d.center_ratio)}</b></li>
+        <li><span>좌 / 우 임계</span><b>${fmt(d.h_left_threshold)} / ${fmt(d.h_right_threshold)}</b></li>
+        <li><span>상 / 하 임계</span><b>${fmt(d.v_up_threshold)} / ${fmt(d.v_down_threshold)}</b></li>
+        <li><span>시선 이탈 판정 시간</span><b>${fmt(d.gaze_lost_threshold, "초")}</b></li>
+        <li><span>보정 상태</span><b style="color:#177a3b">${d.calibrated ? "✅ 보정 완료" : "⚠ 미보정"}</b></li>
+      `;
+    }
+
+    async function loadCurrent() {
+      try {
+        const d = await Api.get("/calibration/me");
+        renderCurrent(d);
+      } catch (e) { console.warn(e); }
+    }
+
+    btnStart.addEventListener("click", async () => {
+      clearError();
+      btnStart.disabled = true;
+      try {
+        if (!landmarker) {
+          setStatus("모델 로딩 중…", "warn");
+          await setupLandmarker();
+        }
+        if (!stream) await setupCamera();
+        samplesH = []; samplesV = [];
+        progressBar.style.width = "0%";
+        sampleText.textContent = `0 / ${REQUIRED} 샘플`;
+        running = true;
+        btnStop.disabled = false;
+        setStatus("측정 중…", "warn");
+        setActiveStep(2);
+        loop();
+      } catch (e) {
+        showError("초기화 실패: " + e.message);
+        btnStart.disabled = false;
+      }
+    });
+
+    btnStop.addEventListener("click", () => {
+      running = false;
+      btnStart.disabled = false;
+      btnStop.disabled = true;
+      setStatus("중지됨", "warn");
+    });
+
+    btnReset.addEventListener("click", async () => {
+      clearError();
+      try {
+        const d = await Api.post("/calibration/me/reset");
+        renderCurrent(d);
+        resultBox.style.display = "none";
+        progressBar.style.width = "0%";
+        sampleText.textContent = `0 / ${REQUIRED} 샘플`;
+        setStatus("기본값", "warn");
+      } catch (e) { showError("초기화 실패: " + e.message); }
+    });
+
+    // 초기 표시
+    setActiveStep(1);
+    loadCurrent();
+
+    window.addEventListener("beforeunload", () => {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>I-Study | 학생 일정 조회</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div id="topbar"></div>
+
+  <main class="page">
+    <div class="page-header">
+      <h1>학생 일정 조회</h1>
+      <p>매칭된 학생의 일정을 읽기 전용으로 확인하세요</p>
+    </div>
+
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:16px;flex-wrap:wrap;gap:12px">
+        <div class="flex-row gap-12">
+          <label style="font-size:13px;color:var(--ink-500);font-weight:600">
+            학생
+            <select id="studentSelect" class="input" style="margin-left:6px;width:auto"></select>
+          </label>
+          <label style="font-size:13px;color:var(--ink-500);font-weight:600">
+            날짜
+            <input type="date" id="filterDate" class="input" style="margin-left:6px;width:auto" />
+          </label>
+        </div>
+      </div>
+      <div id="scheduleList" class="schedule-list">
+        <div class="empty">학생을 선택하세요</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/nav.js"></script>
+  <script>
+    Auth.requireLogin();
+    if (Auth.getInfo().role !== "TEACHER") { location.href = "/main"; }
+
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById("filterDate").value = today;
+
+    let students = [];
+
+    function escape(s) {
+      return String(s).replace(/[&<>"']/g, c =>
+        ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+    }
+
+    async function loadStudents() {
+      const data = await Api.get("/users/teacher/students");
+      students = data.students || [];
+      const sel = document.getElementById("studentSelect");
+      if (!students.length) {
+        sel.innerHTML = `<option value="">매칭된 학생이 없습니다</option>`;
+        document.getElementById("scheduleList").innerHTML =
+          `<div class="empty">매칭된 학생이 없습니다. 가입 시 학생 아이디를 입력했는지 확인하세요.</div>`;
+        return;
+      }
+      sel.innerHTML = students.map(s =>
+        `<option value="${s.id}">${escape(s.name)} (${s.login_id})</option>`
+      ).join("");
+
+      // URL 파라미터로 들어왔으면 해당 학생 선택
+      const qs = new URLSearchParams(location.search);
+      const sid = qs.get("student_id");
+      if (sid && students.find(s => s.id == sid)) sel.value = sid;
+
+      loadSchedules();
+    }
+
+    async function loadSchedules() {
+      const sid = document.getElementById("studentSelect").value;
+      const d = document.getElementById("filterDate").value;
+      const list = document.getElementById("scheduleList");
+      if (!sid) return;
+      list.innerHTML = `<div class="empty">로딩 중…</div>`;
+      try {
+        const items = await Api.get(`/schedules/student/${sid}?date_from=${d}&date_to=${d}`);
+        if (!items.length) {
+          list.innerHTML = `<div class="empty">📭 이 날짜에 일정이 없어요</div>`;
+          return;
+        }
+        list.innerHTML = items.map(s => `
+          <div class="schedule-item color-${s.color || 'blue'} ${s.is_done ? 'done' : ''}">
+            <div class="bar"></div>
+            <div class="check" title="완료 여부 (학생만 변경 가능)" style="cursor:default">${s.is_done ? '✓' : ''}</div>
+            <div class="when">
+              <strong>${s.date}</strong>
+              ${s.start_time ? s.start_time : ''}${s.end_time ? ' ~ ' + s.end_time : ''}
+            </div>
+            <div class="body">
+              <div class="title">${escape(s.title)}</div>
+              ${s.memo ? `<div class="memo">${escape(s.memo)}</div>` : ''}
+            </div>
+            <span class="badge">${s.is_done ? '완료' : '진행 중'}</span>
+          </div>
+        `).join("");
+      } catch (err) {
+        list.innerHTML = `<div class="error-msg">${err.message}</div>`;
+      }
+    }
+
+    document.getElementById("studentSelect").addEventListener("change", loadSchedules);
+    document.getElementById("filterDate").addEventListener("change", loadSchedules);
+
+    loadStudents();
+  </script>
+</body>
+</html>
