@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>I-Study | 내 화이트리스트</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/css/style.css?v=4" />
+  <style>
+    .url-list { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+    .url-row { display:flex; align-items:center; gap:12px; padding:12px 16px;
+               background:#f7f9ff; border-radius:14px; }
+    .url-row .name { font-weight:700; color:#1f2a44; }
+    .url-row .url  { color:#5b6480; font-size:13px; word-break: break-all; }
+    .url-row .pill { margin-left:auto; }
+    .pill { display:inline-block; padding:3px 10px; border-radius:999px;
+            background:#eaf0ff; color:#3057ff; font-weight:700; font-size:12px; }
+    .pill.gray { background:#eef2fb; color:#5b6480; }
+    .info-banner { background:#fff8e6; color:#7a5500; padding:12px 16px;
+                   border-radius:14px; font-size:14px; }
+  </style>
+</head>
+<body>
+  <div id="topbar"></div>
+
+  <main class="page">
+    <div class="page-header">
+      <h1>🛡️ 내 화이트리스트</h1>
+      <p>학습 중 데스크톱 앱이 접근을 허용하는 사이트 목록이에요. <strong>편집은 학습관리자(지도자)</strong>만 할 수 있어요.</p>
+    </div>
+
+    <div class="card">
+      <div class="info-banner" id="infoBanner">
+        편집이 필요하면 매칭된 학습관리자에게 요청해 주세요.
+      </div>
+      <div class="url-list" id="urlList">
+        <div class="muted">로딩 중…</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/nav.js"></script>
+  <script>
+    Auth.requireLogin();
+    const role = Auth.getInfo().role;
+    if (role !== "STUDENT") {
+      // 지도자/관리자는 전용 페이지로
+      location.href = role === "TEACHER" ? "/teacher-whitelist" : "/main";
+    }
+
+    (async () => {
+      try {
+        const list = await Api.get("/whitelist/effective");
+        const el = document.getElementById("urlList");
+        if (!list.length) {
+          el.innerHTML = `<div class="muted">아직 등록된 사이트가 없어요.</div>`;
+          return;
+        }
+        el.innerHTML = list.map(item => `
+          <div class="url-row">
+            <div>
+              <div class="name">${escapeHtml(item.name)}</div>
+              <div class="url">${escapeHtml(item.url)}</div>
+            </div>
+            <span class="pill ${item.is_default ? 'gray' : ''}">
+              ${item.is_default ? '기본' : '내 전용'}
+            </span>
+          </div>
+        `).join("");
+      } catch (e) {
+        document.getElementById("urlList").innerHTML =
+          `<div class="error-msg">${e.message}</div>`;
+      }
+    })();
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+      }[c]));
+    }
+  </script>
+</body>
+</html>

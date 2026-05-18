@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+*.spec
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 환경 설정 (비밀번호 포함)
+.env
+_server_url.txt
+
+# Data (런타임 생성)
+data/*.db
+logs/*.log
+*.log
+desktop_out.txt
+desktop_err.txt
+
+# Models (자동 다운로드 — 약 30MB)
+models/*.task
+ai_core/models/*.task
+tests/ai_core/*.task
+
+# OS
+Thumbs.db
+.DS_Store

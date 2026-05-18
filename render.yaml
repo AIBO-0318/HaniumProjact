@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: i-study
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd backend_db && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: i-study-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: i-study-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: i-study-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: i-study-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: i-study-db
+          property: database
+      - key: DATABASE_URL
+        fromDatabase:
+          name: i-study-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+
+databases:
+  - name: i-study-db
+    databaseName: istudy
+    user: istudy_user

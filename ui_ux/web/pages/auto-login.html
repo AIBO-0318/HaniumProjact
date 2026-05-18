@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>I-Study | 자동 로그인</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/css/style.css?v=4" />
+</head>
+<body>
+  <main class="page" style="display:flex;align-items:center;justify-content:center;min-height:60vh">
+    <div class="card" style="text-align:center;max-width:360px">
+      <div style="font-size:40px;margin-bottom:12px">📘</div>
+      <h2 id="msg">로그인 중…</h2>
+      <p class="muted" id="sub">데스크톱 앱에서 세션을 이어받고 있어요</p>
+    </div>
+  </main>
+
+  <script src="/static/js/api.js"></script>
+  <script>
+    (async () => {
+      const params = new URLSearchParams(location.search);
+      const token = params.get("token");
+
+      if (!token) {
+        document.getElementById("msg").textContent = "토큰이 없습니다";
+        document.getElementById("sub").textContent = "데스크톱 앱에서 웹 바로가기를 이용해주세요.";
+        return;
+      }
+
+      try {
+        // 토큰으로 사용자 정보 조회 시도 (user)
+        let info = null;
+        try {
+          const me = await fetch("/users/me", {
+            headers: { "Authorization": "Bearer " + token }
+          });
+          if (me.ok) {
+            const data = await me.json();
+            info = {
+              account_type: "user",
+              role: data.role,
+              name: data.name,
+              login_id: data.login_id,
+            };
+          }
+        } catch (e) {}
+
+        // user가 아니면 admin 시도
+        if (!info) {
+          try {
+            const me = await fetch("/admins/me", {
+              headers: { "Authorization": "Bearer " + token }
+            });
+            if (me.ok) {
+              const data = await me.json();
+              info = {
+                account_type: "admin",
+                role: "ADMIN",
+                name: data.name,
+                admin_id: data.admin_id,
+              };
+            }
+          } catch (e) {}
+        }
+
+        if (info) {
+          localStorage.setItem("token", token);
+          localStorage.setItem("user_info", JSON.stringify(info));
+          document.getElementById("msg").textContent = `${info.name}님, 환영합니다!`;
+          document.getElementById("sub").textContent = "메인 페이지로 이동합니다…";
+          setTimeout(() => { location.href = "/main"; }, 800);
+        } else {
+          document.getElementById("msg").textContent = "인증 실패";
+          document.getElementById("sub").textContent = "토큰이 만료되었거나 유효하지 않습니다.";
+        }
+      } catch (err) {
+        document.getElementById("msg").textContent = "오류 발생";
+        document.getElementById("sub").textContent = err.message;
+      }
+    })();
+  </script>
+</body>
+</html>

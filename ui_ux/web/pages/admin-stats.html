@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>I-Study | 학생 통계 조회 (관리자)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/css/style.css?v=4" />
+</head>
+<body>
+  <div id="topbar"></div>
+
+  <main class="page">
+    <div class="page-header">
+      <h1>학생 통계 조회</h1>
+      <p>전체 학생의 학습 통계를 확인하세요</p>
+    </div>
+
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:16px;flex-wrap:wrap;gap:12px">
+        <div class="flex-row gap-12">
+          <label style="font-size:13px;color:var(--ink-500);font-weight:600">
+            학생
+            <select id="studentSelect" class="input" style="margin-left:6px;width:auto"></select>
+          </label>
+          <label style="font-size:13px;color:var(--ink-500);font-weight:600">
+            기간
+            <select id="periodSelect" class="input" style="margin-left:6px;width:auto">
+              <option value="7">최근 7일</option>
+              <option value="14">최근 14일</option>
+              <option value="30">최근 30일</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <!-- 요약 -->
+      <div class="stat-row" id="summaryRow" style="margin-bottom:20px"></div>
+
+      <!-- 일별 통계 테이블 -->
+      <h3 style="margin-bottom:12px">일별 학습 기록</h3>
+      <div id="statsTable" class="schedule-list">
+        <div class="empty">학생을 선택하세요</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/nav.js"></script>
+  <script>
+    Auth.requireLogin();
+    const info = Auth.getInfo();
+    if (info.account_type !== "admin") { location.href = "/main"; }
+
+    let students = [];
+
+    function escape(s) {
+      return String(s).replace(/[&<>"']/g, c =>
+        ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+    }
+
+    async function loadStudents() {
+      try {
+        const users = await Api.get("/admins/users");
+        students = users.filter(u => u.role === "STUDENT");
+        const sel = document.getElementById("studentSelect");
+        if (!students.length) {
+          sel.innerHTML = `<option value="">학생이 없습니다</option>`;
+          return;
+        }
+        sel.innerHTML = `<option value="">-- 전체 --</option>` +
+          students.map(s =>
+            `<option value="${s.id}">${escape(s.name)} (${s.login_id})</option>`
+          ).join("");
+        loadStats();
+      } catch (err) {
+        document.getElementById("statsTable").innerHTML =
+          `<div class="error-msg">${err.message}</div>`;
+      }
+    }
+
+    async function loadStats() {
+      const sid = document.getElementById("studentSelect").value;
+      const days = document.getElementById("periodSelect").value;
+      const table = document.getElementById("statsTable");
+      const summary = document.getElementById("summaryRow");
+      table.innerHTML = `<div class="empty">로딩 중…</div>`;
+
+      try {
+        let url = `/stats/daily?days=${days}`;
+        if (sid) url += `&student_id=${sid}`;
+        const data = await Api.get(url);
+        const items = data.items || [];
+
+        // 요약 계산
+        const totalMin = items.reduce((s, i) => s + i.duration_min, 0);
+        const avgScore = items.filter(i => i.focus_score > 0);
+        const avg = avgScore.length ? (avgScore.reduce((s, i) => s + i.focus_score, 0) / avgScore.length).toFixed(1) : 0;
+        const studyDays = items.filter(i => i.duration_min > 0).length;
+
+        summary.innerHTML = `
+          <div class="stat-card blue">
+            <div class="label">총 학습 시간</div>
+            <div class="value">${totalMin}<span class="unit">분</span></div>
+          </div>
+          <div class="stat-card mint">
+            <div class="label">평균 집중도</div>
+            <div class="value">${avg}<span class="unit">점</span></div>
+          </div>
+          <div class="stat-card peach">
+            <div class="label">학습 일수</div>
+            <div class="value">${studyDays}<span class="unit">일</span></div>
+          </div>
+        `;
+
+        // 테이블
+        const activeItems = items.filter(i => i.duration_min > 0);
+        if (!activeItems.length) {
+          table.innerHTML = `<div class="empty">📭 해당 기간에 학습 기록이 없어요</div>`;
+          return;
+        }
+        table.innerHTML = `
+          <div class="schedule-item" style="font-weight:600;background:var(--ink-50)">
+            <div style="flex:1">날짜</div>
+            <div style="flex:1;text-align:center">학습 시간</div>
+            <div style="flex:1;text-align:center">집중도</div>
+            <div style="flex:1;text-align:center">집중</div>
+            <div style="flex:1;text-align:center">멍</div>
+            <div style="flex:1;text-align:center">이탈</div>
+          </div>
+        ` + activeItems.reverse().map(i => `
+          <div class="schedule-item">
+            <div style="flex:1">${i.date}</div>
+            <div style="flex:1;text-align:center">${i.duration_min}분</div>
+            <div style="flex:1;text-align:center">${i.focus_score}점</div>
+            <div style="flex:1;text-align:center;color:#3CC57F">${i.focused_min}분</div>
+            <div style="flex:1;text-align:center;color:#FF7043">${i.dazed_min}분</div>
+            <div style="flex:1;text-align:center;color:#F04452">${i.distracted_min}분</div>
+          </div>
+        `).join("");
+      } catch (err) {
+        table.innerHTML = `<div class="error-msg">${err.message}</div>`;
+        summary.innerHTML = "";
+      }
+    }
+
+    document.getElementById("studentSelect").addEventListener("change", loadStats);
+    document.getElementById("periodSelect").addEventListener("change", loadStats);
+
+    loadStudents();
+  </script>
+</body>
+</html>

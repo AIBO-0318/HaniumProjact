@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>I-Study | 사용자 관리</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/css/style.css?v=4" />
+</head>
+<body>
+  <div id="topbar"></div>
+
+  <main class="page">
+    <div class="page-header">
+      <h1>사용자 관리</h1>
+      <p>가입된 사용자를 관리하세요</p>
+    </div>
+
+    <!-- 시스템 통계 -->
+    <div class="stat-row" id="sysStats"></div>
+
+    <!-- 필터 -->
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:16px;flex-wrap:wrap;gap:12px">
+        <h2>사용자 목록</h2>
+        <div class="flex-row gap-12">
+          <label style="font-size:13px;color:var(--ink-500);font-weight:600">
+            역할
+            <select id="roleFilter" class="input" style="margin-left:6px;width:auto">
+              <option value="">전체</option>
+              <option value="STUDENT">학생</option>
+              <option value="TEACHER">학습지도자</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div id="userList" class="user-list">로딩 중…</div>
+    </div>
+  </main>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/nav.js"></script>
+  <script>
+    Auth.requireLogin();
+    const info = Auth.getInfo();
+    if (info.account_type !== "admin") { location.href = "/main"; }
+
+    const roleKo = { STUDENT: "학생", TEACHER: "학습지도자", ADMIN: "관리자" };
+    let allUsers = [];
+
+    function escape(s) {
+      return String(s).replace(/[&<>"']/g, c =>
+        ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+    }
+
+    async function loadStats() {
+      try {
+        const s = await Api.get("/admins/stats");
+        document.getElementById("sysStats").innerHTML = `
+          <div class="stat-card blue">
+            <div class="label">전체 사용자</div>
+            <div class="value">${s.total_users}<span class="unit">명</span></div>
+          </div>
+          <div class="stat-card mint">
+            <div class="label">학생</div>
+            <div class="value">${s.students}<span class="unit">명</span></div>
+          </div>
+          <div class="stat-card peach">
+            <div class="label">학습지도자</div>
+            <div class="value">${s.teachers}<span class="unit">명</span></div>
+          </div>
+        `;
+      } catch (e) { console.warn(e); }
+    }
+
+    async function loadUsers() {
+      try {
+        allUsers = await Api.get("/admins/users");
+        renderUsers();
+      } catch (err) {
+        document.getElementById("userList").innerHTML =
+          `<div class="error-msg">${err.message}</div>`;
+      }
+    }
+
+    function renderUsers() {
+      const roleF = document.getElementById("roleFilter").value;
+      let filtered = allUsers;
+      if (roleF) filtered = filtered.filter(u => u.role === roleF);
+
+      const list = document.getElementById("userList");
+      if (!filtered.length) {
+        list.innerHTML = `<div class="empty">조건에 맞는 사용자가 없습니다.</div>`;
+        return;
+      }
+
+      list.innerHTML = filtered.map(u => {
+        let match = "";
+        if (u.role === "STUDENT") {
+          match = u.teacher_login_id
+            ? `<span class="match">👨‍🏫 지도자: <strong>${escape(u.teacher_name)}</strong> (${escape(u.teacher_login_id)})</span>`
+            : `<span class="match muted-match">지도자 미배정</span>`;
+        } else if (u.role === "TEACHER") {
+          const cnt = (u.students || []).length;
+          match = cnt > 0
+            ? `<span class="match">🎓 학생 ${cnt}명: <strong>${u.students.map(s => escape(s.name) + ' (' + escape(s.login_id) + ')').join(', ')}</strong></span>`
+            : `<span class="match muted-match">관리 학생 없음</span>`;
+        }
+        return `
+          <div class="user-row">
+            <span class="role-badge ${u.role}">${roleKo[u.role] || u.role}</span>
+            <div class="user-info">
+              <div><strong>${escape(u.login_id)}</strong> · ${escape(u.name)}</div>
+              ${match ? `<div class="user-match">${match}</div>` : ""}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    window.approveUser = async (id) => {
+      try {
+        await Api.post(`/admins/users/${id}/approve`);
+        loadStats();
+        loadUsers();
+      } catch (err) { alert(err.message); }
+    };
+
+    window.rejectUser = async (id) => {
+      if (!confirm("이 사용자를 비활성화할까요?")) return;
+      try {
+        await Api.post(`/admins/users/${id}/reject`);
+        loadStats();
+        loadUsers();
+      } catch (err) { alert(err.message); }
+    };
+
+    document.getElementById("roleFilter").addEventListener("change", renderUsers);
+
+    loadStats();
+    loadUsers();
+  </script>
+</body>
+</html>

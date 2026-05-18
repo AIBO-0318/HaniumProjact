@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>I-Study | 마이페이지</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/css/style.css?v=4" />
+</head>
+<body>
+  <div id="topbar"></div>
+
+  <main class="page" style="max-width:720px">
+    <div class="page-header">
+      <h1>마이페이지</h1>
+      <p>내 정보를 확인하세요</p>
+    </div>
+
+    <div class="card">
+      <div class="profile">
+        <div class="avatar" id="avatar">?</div>
+        <div>
+          <div class="name" id="pName">-</div>
+          <div class="sub" id="pSub">-</div>
+        </div>
+      </div>
+
+      <h3>계정 정보</h3>
+      <div class="info-row">
+        <span class="k">아이디</span>
+        <span class="v" id="iLoginId">-</span>
+      </div>
+      <div class="info-row">
+        <span class="k">이름</span>
+        <span class="v" id="iName">-</span>
+      </div>
+      <div class="info-row">
+        <span class="k">역할</span>
+        <span class="v" id="iRole">-</span>
+      </div>
+      <div class="info-row">
+        <span class="k">가입일</span>
+        <span class="v" id="iCreated">-</span>
+      </div>
+      <div class="info-row">
+        <span class="k">계정 상태</span>
+        <span class="v" id="iStatus">-</span>
+      </div>
+
+      <div class="flex-row mt-20" style="justify-content:flex-end;gap:8px">
+        <button class="btn-ghost" onclick="Auth.logout(); location.href='/'">로그아웃</button>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/nav.js"></script>
+  <script>
+    Auth.requireLogin();
+    const info = Auth.getInfo();
+
+    const roleKo = { STUDENT: "학생", TEACHER: "학습지도자", ADMIN: "관리자" };
+
+    document.getElementById("avatar").textContent = (info.name || "?")[0];
+    document.getElementById("pName").textContent = info.name;
+    document.getElementById("pSub").textContent =
+      `${roleKo[info.role] || info.role} · ${info.account_type === 'admin' ? '관리자 계정' : '일반 계정'}`;
+
+    (async () => {
+      try {
+        const endpoint = info.account_type === "admin" ? "/admins/me" : "/users/me";
+        const me = await Api.get(endpoint);
+        document.getElementById("iLoginId").textContent = me.login_id || me.admin_id;
+        document.getElementById("iName").textContent = me.name;
+        document.getElementById("iRole").textContent = roleKo[me.role] || (me.level ? `관리자 (Lv.${me.level})` : "-");
+        document.getElementById("iCreated").textContent = (me.created_at || "").slice(0, 10);
+        document.getElementById("iStatus").textContent =
+          me.is_active === 0 ? "⏳ 승인 대기" : "✅ 승인됨";
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+
+  </script>
+</body>
+</html>

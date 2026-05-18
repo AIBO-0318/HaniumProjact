@@ -1,0 +1,67 @@
+name: Build EXE & Release
+
+on:
+  push:
+    tags:
+      - 'v*'          # v1.0, v1.1 등 태그 푸시 시 자동 실행
+  workflow_dispatch:   # GitHub 웹에서 수동 실행 가능
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Download MediaPipe model
+        run: |
+          python -c "
+          import os, urllib.request
+          os.makedirs('ai_core/models', exist_ok=True)
+          url = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
+          urllib.request.urlretrieve(url, 'ai_core/models/face_landmarker.task')
+          print('Model downloaded')
+          "
+
+      - name: Build EXE
+        run: python build_exe.py --server-url "${{ secrets.ISTUDY_SERVER_URL }}"
+        env:
+          ISTUDY_SERVER_URL: ${{ secrets.ISTUDY_SERVER_URL }}
+
+      - name: Zip artifact
+        run: |
+          Compress-Archive -Path dist\I-Study\* -DestinationPath I-Study-Windows.zip
+
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: I-Study-Windows
+          path: I-Study-Windows.zip
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: I-Study-Windows.zip
+          body: |
+            ## I-Study 다운로드
+
+            ### 설치 방법
+            1. `I-Study-Windows.zip` 다운로드 후 압축 해제
+            2. `I-Study.exe` 실행
+            3. PostgreSQL이 실행 중이어야 합니다
+
+            ### 웹 접속
+            서버 URL을 브라우저에 입력하여 접속
