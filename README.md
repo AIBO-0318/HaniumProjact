@@ -167,91 +167,131 @@ I-Study/
 
 ---
 
-## 8. 설치 및 실행 방법
+## 8. 실행 방법
 
-### 8.1 사전 요구사항
+> 사용 목적에 따라 세 가지 방법 중 하나를 선택하세요.
 
-1. **Python 3.10+** — [python.org](https://www.python.org/downloads/)
-2. **PostgreSQL 14+** — [postgresql.org](https://www.postgresql.org/download/)
-3. **웹캠** (데스크톱 앱 사용 시)
+---
 
-### 8.2 설치
+### ✅ 방법 A — 웹 브라우저로 접속 (가장 간단)
+
+배포된 서버 URL을 브라우저에 입력하면 바로 사용 가능합니다.  
+PostgreSQL, Python 설치 **불필요**.
+
+```
+https://haniumproject.onrender.com   ← 실제 배포 URL
+```
+
+1. 위 URL 접속
+2. **회원가입** → 관리자 승인 대기
+3. 승인 후 로그인 → 사용 시작
+
+> ⚠️ 무료 서버는 15분 미사용 시 슬립 상태가 됩니다. 첫 접속이 느릴 수 있습니다 (약 30초).
+
+---
+
+### ✅ 방법 B — 데스크톱 앱 다운로드 (EXE)
+
+PC에 설치 없이 실행 파일만 다운받아 사용합니다.  
+PostgreSQL, Python 설치 **불필요**.
+
+1. [GitHub Releases](https://github.com/AIBO-0318/HaniumProjact/releases) 접속
+2. 최신 버전의 `I-Study-Windows.zip` 다운로드
+3. 압축 해제 → `I-Study.exe` 실행
+4. 로그인 (방법 A에서 만든 계정 사용)
+
+> **시스템 요구사항**: Windows 10/11 64-bit, 웹캠
+
+---
+
+### ✅ 방법 C — 개발자 로컬 실행
+
+소스 코드를 직접 수정하거나 개발하는 경우.
+
+#### 사전 요구사항
+- Python 3.10+
+- PostgreSQL 14+
+- 웹캠
+
+#### 설치
 
 ```bash
 # 1. 저장소 클론
-git clone https://github.com/your-username/I-Study.git
-cd I-Study
+git clone https://github.com/AIBO-0318/HaniumProjact.git
+cd HaniumProjact
 
 # 2. 가상환경 생성 및 활성화
 python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # macOS/Linux
+venv\Scripts\activate
 
 # 3. 패키지 설치
 pip install -r requirements.txt
+
+# 4. 환경변수 설정
+copy .env.example .env
+# .env 파일을 열어 PostgreSQL 비밀번호 입력
 ```
 
-### 8.3 데이터베이스 설정
+#### 실행
 
 ```bash
-# 1. .env 파일 생성
-copy .env.example .env       # Windows
-# cp .env.example .env       # macOS/Linux
-
-# 2. .env 파일을 열어 PostgreSQL 비밀번호 수정
-#    DB_PASSWORD=your_password_here  ← 본인 PostgreSQL 비밀번호 입력
-```
-
-> ⚠️ PostgreSQL 설치 후 서비스가 실행 중이어야 합니다.  
-> 데이터베이스(`istudy`)와 테이블은 **앱 실행 시 자동 생성**됩니다.
-
-### 8.4 실행
-
-```bash
-# 방법 1: 데스크톱 앱 + 웹 서버 동시 실행
+# 데스크톱 앱 + 웹 서버 동시 실행
 python run_desktop.py
 
-# 방법 2: 웹 서버만 실행 (웹 브라우저로 접속)
+# 웹 서버만 실행 (브라우저로 접속)
 python run_backend.py
 ```
 
-| 실행 명령 | 설명 | 접속 URL |
-|-----------|------|----------|
-| `python run_desktop.py` | 앱 + 서버 동시 | 앱 UI + http://localhost:8000 |
-| `python run_backend.py` | 서버만 | http://localhost:8000 |
+| 명령 | 접속 방법 |
+|------|-----------|
+| `python run_desktop.py` | 앱 창 자동 실행 + http://localhost:8000 |
+| `python run_backend.py` | http://localhost:8000 |
 
-### 8.5 초기 계정 생성
+#### 초기 관리자 계정 생성
 
-서버 실행 후 웹 브라우저에서 **http://localhost:8000** 접속:
+서버 실행 후 http://localhost:8000/docs 에서 `POST /admins/signup` 호출:
 
-1. **학생/지도자** — 회원가입 페이지(`/signup`)에서 가입
-2. **관리자** — API 문서(`/docs`)에서 `POST /admins/signup` 호출:
-   ```json
-   {
-     "admin_id": "root",
-     "password": "your_password",
-     "name": "관리자",
-     "level": 9
-   }
+```json
+{
+  "admin_id": "admin",
+  "password": "비밀번호",
+  "name": "관리자",
+  "level": 9
+}
+```
+
+이후 http://localhost:8000 에서 일반 회원가입 → 관리자 로그인 후 사용자 승인.
+
+---
+
+### 🔧 서버 배포 (개발자용)
+
+#### 1. Neon에서 PostgreSQL 생성
+1. [neon.tech](https://neon.tech) → GitHub 로그인
+2. **Create Project** → 프로젝트 생성
+3. 연결 문자열 복사: `postgresql://user:pass@ep-xxx.neon.tech/neondb`
+
+#### 2. Render에서 웹 서버 배포
+1. [render.com](https://render.com) → GitHub 로그인
+2. **New → Web Service** → 이 저장소 선택
+3. 설정:
+   - **Root Directory**: `backend_db`
+   - **Build Command**: `pip install -r ../requirements.txt`
+   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+4. **Environment Variables** 추가:
    ```
-3. 관리자 로그인 후 **사용자 관리** 페이지에서 가입한 사용자 승인
+   DATABASE_URL = (Neon에서 복사한 연결 문자열)
+   JWT_SECRET   = (랜덤 문자열)
+   ```
+5. **Create Web Service** → 배포 완료 후 URL 확인
 
-### 8.6 EXE 빌드 (선택사항)
+#### 3. EXE 빌드 (배포 URL 포함)
 
 ```bash
-pip install pyinstaller
 python build_exe.py
-# 결과: dist/I-Study/I-Study.exe
+# 프롬프트에 Render URL 입력
+# → dist/I-Study/ 폴더를 ZIP으로 압축 → GitHub Releases에 업로드
 ```
-
-### 8.7 다른 PC에서 웹 접속
-
-서버 실행 시 터미널에 네트워크 IP가 표시됩니다:
-```
-  로컬 접속:  http://127.0.0.1:8000
-  네트워크:   http://192.168.x.x:8000   ← 이 URL을 다른 PC에서 입력
-```
-> 방화벽에서 포트 8000을 허용해야 합니다.
 
 ---
 
