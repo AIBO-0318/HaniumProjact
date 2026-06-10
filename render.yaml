@@ -2,7 +2,7 @@ services:
   - type: web
     name: i-study
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r backend_db/requirements.txt
     startCommand: cd backend_db && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DB_HOST

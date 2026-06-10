@@ -24,7 +24,7 @@ from shared.config import (
 )
 from ai_core.gaze_tracker import GazeTracker
 from ai_core.monitor import WhitelistMonitor
-from ai_core.database import FocusDatabase
+from shared.remote_db import RemoteStatsDB
 from ui_ux.desktop.pages.home_page import HomePage
 from ui_ux.desktop.dialogs.calibration import CalibrationWindow
 from ui_ux.desktop.dialogs.popups import show_gaze_lost_popup, show_eye_closed_popup, show_blocked_site_popup
@@ -45,8 +45,8 @@ class FocusEyePro(ctk.CTk):
         self.minsize(*APP_MINSIZE)
         self.configure(fg_color=BG_COLOR)
 
-        # ─── 데이터베이스 ───
-        self.db = FocusDatabase()
+        # ─── 데이터(원격 서버 통계 API) ───
+        self.db = RemoteStatsDB()
 
         # ─── 로그인 상태 ───
         self.current_login_id: str | None = None
@@ -90,6 +90,8 @@ class FocusEyePro(ctk.CTk):
             self.current_login_id = dlg.result_login_id
             self.current_token = dlg.result_token
             self.current_name = dlg.result_name
+            # 이후 /stats/* 호출에 쓸 JWT 토큰을 api_client 에 주입
+            api_client.set_token(self.current_token)
 
     def _update_title(self):
         if self.current_name:
