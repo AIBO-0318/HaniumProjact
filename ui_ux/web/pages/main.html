@@ -59,11 +59,10 @@
     // ─── 역할별 타일 ───
     const TILES = {
       STUDENT: [
-        { href: "/schedule",  icon: "📅", color: "blue",   title: "일정표",       desc: "학습 일정 확인 · 추가 · 삭제" },
-        { href: "/stats",     icon: "📊", color: "mint",   title: "학습 통계",     desc: "일별 · 주별 집중도 리포트" },
-        { href: "/calibration", icon: "🎯", color: "blue",   title: "시선 초점",   desc: "웹캠으로 시야각 자동 보정" },
-        { href: "/whitelist",   icon: "🛡️", color: "mint",   title: "내 화이트리스트", desc: "학습 중 허용된 사이트 확인" },
-        { href: "/mypage",    icon: "👤", color: "peach",  title: "마이페이지",    desc: "내 정보 · 계정 관리" },
+        { href: "/schedule",  icon: "📅", color: "blue",   title: "일정표",          desc: "학습 일정 확인 · 추가 · 삭제" },
+        { href: "/stats",     icon: "📊", color: "mint",   title: "학습 통계",       desc: "일별 · 주별 집중도 리포트" },
+        { href: "/whitelist", icon: "🛡️", color: "mint",   title: "내 화이트리스트", desc: "학습 중 허용된 사이트 확인" },
+        { href: "/mypage",    icon: "👤", color: "peach",  title: "마이페이지",      desc: "내 정보 · 계정 관리" },
       ],
       TEACHER: [
         { href: "/teacher-schedule",  icon: "📅", color: "blue",   title: "학생 일정 조회",       desc: "매칭된 학생의 일정 확인 (읽기 전용)" },
@@ -124,6 +123,7 @@
               <span class="role-badge STUDENT">학생</span>
               <strong>${s.login_id}</strong> · ${s.name}
               <a class="btn-soft" href="/teacher-schedule?student_id=${s.id}" style="margin-left:auto">일정 보기</a>
+              <a class="btn-soft" href="/admin-stats?student_id=${s.id}">통계 보기</a>
               <a class="btn-soft" href="/teacher-whitelist?student_id=${s.id}">화이트리스트</a>
             </div>
           `).join("");

@@ -3,7 +3,7 @@
  *
  * Role-based menus:
  *  - ADMIN    → 홈, 마이페이지(사용자 관리)
- *  - STUDENT  → 홈, 일정표, 학습 통계, 시선 추적, 마이페이지   (화이트리스트 ❌)
+ *  - STUDENT  → 홈, 일정표, 학습 통계, 마이페이지
  *  - TEACHER  → 홈, 학생 일정 조회, 학생 화이트리스트 관리, 마이페이지
  */
 
@@ -31,17 +31,17 @@
     links = [
       { href: "/main",                 label: "홈" },
       { href: "/teacher-schedule",     label: "학생 일정 조회" },
+      { href: "/admin-stats",          label: "학생 통계" },
       { href: "/teacher-whitelist",    label: "학생 화이트리스트" },
       { href: "/mypage",               label: "마이페이지" },
     ];
   } else {  // STUDENT
     links = [
-      { href: "/main",          label: "홈" },
-      { href: "/schedule",      label: "일정표" },
-      { href: "/stats",         label: "학습 통계" },
-      { href: "/calibration",   label: "시선 초점" },
-      { href: "/whitelist",     label: "화이트리스트" },
-      { href: "/mypage",        label: "마이페이지" },
+      { href: "/main",      label: "홈" },
+      { href: "/schedule",  label: "일정표" },
+      { href: "/stats",     label: "학습 통계" },
+      { href: "/whitelist", label: "화이트리스트" },
+      { href: "/mypage",    label: "마이페이지" },
     ];
   }
 

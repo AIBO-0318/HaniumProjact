@@ -117,10 +117,16 @@ def main():
     else:
         _start_server_subprocess()
 
-    from ui_ux.desktop.app import FocusEyePro
-    app = FocusEyePro()
-    app.mainloop()
-    _stop_server()
+    try:
+        from ui_ux.desktop.app import FocusEyePro
+        app = FocusEyePro()
+        app.mainloop()
+    except Exception as e:
+        import traceback
+        print(f"[I-Study] 앱 오류: {e}")
+        traceback.print_exc()
+    finally:
+        _stop_server()
 
 
 if __name__ == "__main__":

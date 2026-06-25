@@ -15,7 +15,7 @@ try:
         sys.path.insert(0, _project_root)
     from shared.env_config import DATABASE_URL, DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
 except ImportError:
-    # 클라우드 환경 (Render 등) - 환경변수에서 직접 읽기
+    # shared 미탑재 환경 - 환경변수에서 직접 읽기
     DB_HOST = os.getenv("DB_HOST", "localhost")
     DB_PORT = os.getenv("DB_PORT", "5432")
     DB_USER = os.getenv("DB_USER", "postgres")
@@ -50,7 +50,7 @@ def ensure_database():
 
 ensure_database()
 
-# Render.com은 postgres:// 로 제공 → SQLAlchemy는 postgresql:// 필요
+# 일부 환경은 postgres:// 로 제공 → SQLAlchemy는 postgresql:// 필요
 _db_url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 engine = create_engine(_db_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

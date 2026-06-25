@@ -57,7 +57,30 @@ python model_test/train.py
 
 ---
 
-### 3. 실시간 평가 (`evaluate.py`)
+### 3. 사진 한 장 판단 (`predict.py`)  ⭐ 사진 → 방향
+```bash
+# 사진 한 장
+python model_test/predict.py 사진.jpg
+
+# 여러 장 / 폴더 통째로 (폴더명이 라벨이면 정확도도 표시)
+python model_test/predict.py a.jpg b.jpg
+python model_test/predict.py model_test/data/left
+
+# 판단 결과를 이미지에 그려서 저장 → model_test/pred_out/
+python model_test/predict.py 사진.jpg --save
+```
+
+학습된 `model.pkl` 로 정면/좌측/우측/위/아래를 판단하고 신뢰도를 출력합니다.
+출력 예:
+```
+  우측   ( 100%)  | 우측 100%  아래 0%  정면 0%  좌측 0%  위쪽 0%   image00004.jpg
+```
+> 이 프로젝트(ai_core)와 동일한 MediaPipe **Tasks(FaceLandmarker)** API를 사용하므로
+> `models/face_landmarker.task` 가 있어야 합니다. (프로젝트를 한 번 실행하면 자동 다운로드)
+
+---
+
+### 4. 실시간 평가 (`evaluate.py`)
 ```bash
 python model_test/evaluate.py
 ```
@@ -94,11 +117,13 @@ python model_test/evaluate.py
 model_test/
 ├── collect_data.py   # 1단계: 데이터 수집
 ├── train.py          # 2단계: 모델 학습
-├── evaluate.py       # 3단계: 실시간 비교
+├── predict.py        # 3단계: 사진 한 장 → 방향 판단  ⭐
+├── evaluate.py       # 4단계: 실시간 비교
 ├── requirements.txt  # scikit-learn
 ├── README.md
-├── model.pkl         # (학습 후 생성)
+├── model.pkl         # 학습된 모델 (RandomForest, 약 97.6%)
 ├── confusion_matrix.png  # (학습 후 생성)
+├── pred_out/         # (predict.py --save 시 생성)
 └── data/             # (수집 후 생성)
     ├── front/
     ├── left/

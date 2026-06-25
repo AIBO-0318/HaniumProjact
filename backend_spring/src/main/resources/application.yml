@@ -1,0 +1,40 @@
+server:
+  port: 8000
+  # 0.0.0.0 = LAN의 모든 기기에서 접속 허용 (로컬/LAN 서버 모드).
+  # 같은 PC에서만 쓰려면 127.0.0.1 로 변경. (env: SERVER_HOST)
+  address: ${SERVER_HOST:0.0.0.0}
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+
+spring:
+  application:
+    name: istudy-backend
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:istudy}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:aisw2026}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      # 테이블은 FastAPI(SQLAlchemy) 또는 최초 1회 마이그레이션으로 생성됨.
+      # 공유 스키마를 건드리지 않도록 none 권장. 단독 부팅 검증 시 validate 로 변경 가능.
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+
+app:
+  jwt:
+    # ⚠️ FastAPI(/ws/gaze)의 JWT_SECRET 과 반드시 동일해야 토큰 상호 검증이 됩니다.
+    secret: ${JWT_SECRET:i-study-beta-change-this-in-production-please}
+    expire-minutes: 1440
+  # 정적 웹(ui_ux/web) 루트. 기본은 backend_spring 기준 상위 폴더.
+  web-root: ${WEB_ROOT:../ui_ux/web}
+
+logging:
+  level:
+    org.springframework.security: INFO

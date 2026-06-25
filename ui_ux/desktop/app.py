@@ -333,13 +333,18 @@ class FocusEyePro(ctk.CTk):
     # ═══════════════════════════════════════
 
     def _open_calibration(self):
-        if self.gaze_tracker is None or not self.gaze_tracker.is_running:
-            self.gaze_tracker = GazeTracker(
-                gaze_lost_threshold=GAZE_LOST_THRESHOLD,
-                eye_closure_threshold=EYE_CLOSURE_THRESHOLD
-            )
-            self.gaze_tracker.start()
-            time.sleep(0.5)
+        try:
+            if self.gaze_tracker is None or not self.gaze_tracker.is_running:
+                self.gaze_tracker = GazeTracker(
+                    gaze_lost_threshold=GAZE_LOST_THRESHOLD,
+                    eye_closure_threshold=EYE_CLOSURE_THRESHOLD
+                )
+                self.gaze_tracker.start()
+                time.sleep(0.5)
+        except Exception as e:
+            self.gaze_tracker = None
+            messagebox.showerror("오류", f"시야각 초점 설정을 시작할 수 없습니다.\n{e}")
+            return
         CalibrationWindow(self, self.gaze_tracker, self._on_calibration_complete)
 
     def _on_calibration_complete(self, success):

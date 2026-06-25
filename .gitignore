@@ -34,6 +34,16 @@ models/*.task
 ai_core/models/*.task
 tests/ai_core/*.task
 
+# model_test 추론 산출물
+model_test/pred_out/
+
+# 배포 빌드 결과물 (zip은 GitHub Releases로 배포 — git에는 미포함)
+배포_다른PC용/
+
+# AI 데이터셋·테스트 로그 (대용량)
+model_test/data/
+gaze_test_output/
+
 # OS
 Thumbs.db
 .DS_Store

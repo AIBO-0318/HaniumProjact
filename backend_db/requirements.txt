@@ -1,4 +1,4 @@
-# I-Study 서버(Render) 전용 의존성 — 클라이언트/GUI 패키지 제외
+# I-Study AI 서버(FastAPI /ws/gaze) 전용 의존성 — 클라이언트/GUI 패키지 제외
 fastapi>=0.100.0
 uvicorn[standard]>=0.23.0
 sqlalchemy>=2.0.0

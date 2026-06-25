@@ -111,37 +111,44 @@ class GazeTracker:
         return os.path.dirname(os.path.abspath(__file__))
     
     def _ensure_model(self) -> str:
-        """모델 파일 다운로드 확인"""
+        """모델 파일 위치 탐색 (없으면 다운로드)"""
         base_path = self._get_base_path()
-        
-        # core/ 폴더 기준이므로 프로젝트 루트의 models/ 폴더 확인
         project_root = os.path.dirname(base_path)
-        model_path = os.path.join(project_root, "models", "face_landmarker.task")
-        
-        if os.path.exists(model_path):
-            return model_path
-        
-        # 프로젝트 루트에서도 확인
-        alt_path = os.path.join(project_root, "face_landmarker.task")
-        if os.path.exists(alt_path):
-            return alt_path
-        
-        # core/ 폴더에서 확인
-        local_path = os.path.join(base_path, "face_landmarker.task")
-        if os.path.exists(local_path):
-            return local_path
-        
-        # 다운로드
+
+        # 환경별 모델 후보 경로 (EXE 번들 포함)
+        candidates = [
+            # PyInstaller 번들: <_MEIPASS>/ai_core/models/face_landmarker.task
+            os.path.join(base_path, "ai_core", "models", "face_landmarker.task"),
+            # 개발 환경: ai_core/models/face_landmarker.task
+            os.path.join(base_path, "models", "face_landmarker.task"),
+            # 프로젝트 루트/models
+            os.path.join(project_root, "models", "face_landmarker.task"),
+            os.path.join(project_root, "face_landmarker.task"),
+            os.path.join(base_path, "face_landmarker.task"),
+        ]
+        for path in candidates:
+            if os.path.exists(path):
+                logger.info(f"Model found: {path}")
+                return path
+
+        # 마지막 수단: 다운로드 (네트워크 필요)
+        download_path = os.path.join(project_root, "models", "face_landmarker.task")
+        logger.warning(f"Model not found in bundle, downloading to {download_path}")
         print("모델 다운로드 중...")
-        os.makedirs(os.path.dirname(model_path), exist_ok=True)
-        urllib.request.urlretrieve(self.MODEL_URL, model_path)
+        os.makedirs(os.path.dirname(download_path), exist_ok=True)
+        urllib.request.urlretrieve(self.MODEL_URL, download_path)
         print("모델 다운로드 완료")
-        
-        return model_path
+
+        return download_path
     
     def _create_landmarker(self):
         """FaceLandmarker 생성"""
-        base_options = python.BaseOptions(model_asset_path=self.model_path)
+        # 모델을 바이트로 읽어 buffer로 전달한다.
+        # MediaPipe의 C++ 파일 로더는 한글 등 비-ASCII 경로를 열지 못하므로
+        # (예: '배포_다른PC용') Python에서 직접 읽어 우회한다.
+        with open(self.model_path, "rb") as f:
+            model_buffer = f.read()
+        base_options = python.BaseOptions(model_asset_buffer=model_buffer)
         options = vision.FaceLandmarkerOptions(
             base_options=base_options,
             output_face_blendshapes=False,

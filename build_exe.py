@@ -29,6 +29,19 @@ def check_pyinstaller():
         print("[✓] PyInstaller 설치 완료")
 
 
+def _detect_lan_ip() -> str:
+    """이 PC의 LAN 사설 IP를 추정 (실패 시 빈 문자열)"""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))  # 실제 전송 없이 로컬 소켓 IP만 확인
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return ""
+
+
 def get_server_url() -> str:
     """서버 URL 결정 순서: 커맨드라인 → 환경변수 → 직접 입력"""
     import argparse
@@ -48,18 +61,23 @@ def get_server_url() -> str:
         print(f"  → 서버 URL (환경변수): {env_url}")
         return env_url
 
-    # 3) 직접 입력 (로컬 빌드)
+    # 3) 직접 입력 (로컬/LAN 빌드)
+    lan_ip = _detect_lan_ip()
+    lan_url = f"http://{lan_ip}:8000" if lan_ip else "http://127.0.0.1:8000"
     print()
     print("=" * 60)
-    print("  서버 URL 설정")
+    print("  서버 URL 설정 (로컬/LAN 서버)")
     print("=" * 60)
-    print("  배포된 서버 URL을 입력하세요.")
-    print("  (엔터만 누르면 로컬 모드로 빌드됩니다)")
+    print("  이 EXE가 접속할 서버 PC의 주소를 입력하세요.")
+    if lan_ip:
+        print(f"  (엔터만 누르면 이 PC의 LAN 주소 {lan_url} 로 빌드)")
+    else:
+        print("  (엔터만 누르면 로컬루백 모드로 빌드)")
     print()
-    url = input("  서버 URL (예: https://i-study.onrender.com): ").strip()
+    url = input(f"  서버 URL (예: {lan_url}): ").strip()
     if not url:
-        url = "http://127.0.0.1:8000"
-        print("  → 로컬 모드로 빌드합니다.")
+        url = lan_url
+        print(f"  → {url} 로 빌드합니다.")
     else:
         print(f"  → {url} 로 빌드합니다.")
     print()

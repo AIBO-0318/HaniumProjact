@@ -182,6 +182,10 @@ if os.path.isdir(WEB_PAGES):
     def page_admin_stats():
         return FileResponse(os.path.join(WEB_PAGES, "admin-stats.html"))
 
+    @app.get("/focus-mode", include_in_schema=False)
+    def page_focus_mode():
+        return FileResponse(os.path.join(WEB_PAGES, "focus-mode.html"))
+
     @app.get("/teacher-schedule", include_in_schema=False)
     def page_teacher_schedule():
         return FileResponse(os.path.join(WEB_PAGES, "teacher-schedule.html"))

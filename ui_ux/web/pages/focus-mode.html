@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>I-Study | 학습 타이머</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="refresh" content="3;url=/main" />
+  <link rel="stylesheet" href="/static/css/style.css?v=4" />
+  <style>
+    .focus-container {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .focus-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .focus-header h1 { font-size: 1.6rem; margin-bottom: 4px; }
+    .focus-header p { color: #888; font-size: 0.9rem; }
+
+    .timer-card {
+      background: #f8f9fa;
+      border-radius: 16px;
+      padding: 32px 24px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .timer-display {
+      font-size: 3.2rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      font-family: 'Courier New', monospace;
+    }
+    .timer-label { color: #888; font-size: 0.85rem; margin-top: 6px; }
+
+    .btn-start {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+    }
+    .btn-start.start { background: #4f46e5; color: #fff; }
+    .btn-start.start:hover { background: #4338ca; }
+    .btn-start.stop { background: #ef4444; color: #fff; }
+    .btn-start.stop:hover { background: #dc2626; }
+
+    .app-notice {
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 0.85rem;
+      color: #4338ca;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    .app-notice strong { display: block; margin-bottom: 2px; }
+
+    .whitelist-section { margin-top: 8px; }
+    .whitelist-section h3 { font-size: 1rem; margin-bottom: 12px; color: #333; }
+    .whitelist-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+    .wl-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      background: #f1f5f9;
+      border-radius: 10px;
+      text-decoration: none;
+      color: #334155;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+    .wl-link:hover { background: #e2e8f0; }
+    .wl-link::before { content: "🔗"; }
+  </style>
+</head>
+<body>
+  <div id="topbar"></div>
+
+  <main class="focus-container">
+    <div class="focus-header">
+      <h1>학습 타이머</h1>
+      <p>이 기능은 데스크톱 앱에서 제공됩니다</p>
+    </div>
+    <div class="app-notice">
+      <strong>� I-Study 앱을 사용하세요</strong>
+      학습 타이머와 시선 추적·집중도 측정은 데스크톱 앱에서만 이용할 수 있습니다.<br>3초 후 홈으로 이동합니다.
+    </div>
+    <div style="text-align:center;">
+      <a href="/main" class="btn-start start" style="display:inline-block;text-decoration:none;width:auto;padding:14px 28px;">홈으로 가기</a>
+    </div>
+  </main>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/nav.js"></script>
+  <script>Auth.requireLogin();</script>
+</body>
+</html>

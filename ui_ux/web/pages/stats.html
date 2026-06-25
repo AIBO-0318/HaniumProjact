@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>I-Study | 학습 통계</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="/static/css/style.css?v=4" />
+  <link rel="stylesheet" href="/static/css/style.css?v=5" />
 </head>
 <body>
   <div id="topbar"></div>
@@ -16,8 +16,16 @@
     </div>
 
     <div class="seg-tabs" id="segTabs">
-      <button data-tab="daily" class="active">일별 통계</button>
-      <button data-tab="weekly">주별 통계</button>
+      <button data-tab="daily" class="active">1일별</button>
+      <button data-tab="weekly">1주일별</button>
+    </div>
+
+    <!-- 날짜 선택 -->
+    <div class="date-control">
+      <button class="date-nav" id="prevBtn" title="이전">&#8249;</button>
+      <input type="date" id="datePicker" class="input date-input" />
+      <button class="date-nav" id="nextBtn" title="다음">&#8250;</button>
+      <span class="date-range" id="rangeLabel"></span>
     </div>
 
     <!-- 요약 카드 -->
@@ -25,8 +33,8 @@
 
     <!-- 차트 -->
     <div class="chart-wrap">
-      <h3 id="chartTitle">일별 학습 시간</h3>
-      <div class="chart-bars" id="chartBars"></div>
+      <h3 id="chartTitle">일별 집중도</h3>
+      <div id="chartArea"></div>
     </div>
   </main>
 
@@ -35,72 +43,273 @@
   <script src="/static/js/nav.js"></script>
   <script>
     Auth.requireLogin();
-    let currentTab = "daily";
 
+    let currentTab = "daily";
+    let selectedDate = new Date();  // 로컬 기준 오늘
+
+    // ── 색상 (사이트 팔레트) ──
+    const C = {
+      blue: "#3D7EF8",
+      blueLight: "#6da3ff",
+      mint: "#05C882",
+      mintLight: "#4bdcae",
+      grid: "#E5E8EF",
+      axis: "#8B95A1",
+      text: "#2D3648",
+    };
+
+    // ── 날짜 유틸 ──
+    const pad = n => String(n).padStart(2, "0");
+    const toISO = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const fromISO = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+    const addDays = (d, n) => { const c = new Date(d); c.setDate(c.getDate() + n); return c; };
+    function mondayOf(d) {
+      const c = new Date(d);
+      const wd = (c.getDay() + 6) % 7;  // 월=0 … 일=6
+      c.setDate(c.getDate() - wd);
+      return c;
+    }
+
+    const datePicker = document.getElementById("datePicker");
+    const rangeLabel = document.getElementById("rangeLabel");
+    const chartTitle = document.getElementById("chartTitle");
+    const chartArea = document.getElementById("chartArea");
+    const summaryRow = document.getElementById("summaryRow");
+
+    // ── 탭 전환 ──
     document.querySelectorAll("#segTabs button").forEach(b => {
       b.addEventListener("click", () => {
         document.querySelectorAll("#segTabs button").forEach(x => x.classList.remove("active"));
         b.classList.add("active");
         currentTab = b.dataset.tab;
+        syncDatePicker();
         render();
       });
     });
 
+    // ── 날짜 네비게이션 ──
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      selectedDate = addDays(selectedDate, currentTab === "daily" ? -1 : -7);
+      syncDatePicker(); render();
+    });
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      selectedDate = addDays(selectedDate, currentTab === "daily" ? 1 : 7);
+      syncDatePicker(); render();
+    });
+    datePicker.addEventListener("change", () => {
+      if (datePicker.value) { selectedDate = fromISO(datePicker.value); render(); }
+    });
+
+    function syncDatePicker() {
+      datePicker.value = toISO(selectedDate);
+    }
+
+    // ── SVG 헬퍼 ──
+    function el(tag, attrs, children) {
+      const n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      for (const k in attrs) n.setAttribute(k, attrs[k]);
+      (children || []).forEach(c => n.appendChild(c));
+      return n;
+    }
+    function svgText(x, y, str, opts = {}) {
+      return el("text", Object.assign({
+        x, y, "font-size": opts.size || 11, fill: opts.fill || C.axis,
+        "text-anchor": opts.anchor || "middle",
+        "font-weight": opts.weight || 400,
+        "dominant-baseline": opts.baseline || "auto",
+      }), [document.createTextNode(str)]);
+    }
+
+    function newSvg(w, h) {
+      const svg = el("svg", {
+        viewBox: `0 0 ${w} ${h}`, width: "100%", height: h,
+        "font-family": "inherit", style: "display:block",
+      });
+      svg._w = w; svg._h = h;
+      return svg;
+    }
+
+    // ── 일별: 시간(x) × 집중도(y) 영역 차트 ──
+    function renderDaily(items) {
+      const W = 760, H = 320;
+      const padL = 48, padR = 20, padT = 16, padB = 36;
+      const plotW = W - padL - padR, plotH = H - padT - padB;
+      const svg = newSvg(W, H);
+
+      const xOf = h => padL + (h / 23) * plotW;
+      const yOf = v => padT + (1 - v / 100) * plotH;
+
+      // y 그리드 + 라벨 (10% 단위)
+      for (let v = 0; v <= 100; v += 10) {
+        const y = yOf(v);
+        svg.appendChild(el("line", { x1: padL, y1: y, x2: W - padR, y2: y, stroke: C.grid, "stroke-width": 1 }));
+        svg.appendChild(svgText(padL - 8, y, v + "%", { anchor: "end", baseline: "middle" }));
+      }
+      // x 라벨 (시간, 2시간 간격)
+      for (let h = 0; h <= 23; h += 2) {
+        svg.appendChild(svgText(xOf(h), H - padB + 16, h + "시", {}));
+      }
+      // 축 제목
+      const yTitle = svgText(14, padT + plotH / 2, "집중도", { anchor: "middle", weight: 600, fill: C.text });
+      yTitle.setAttribute("transform", `rotate(-90 14 ${padT + plotH / 2})`);
+      svg.appendChild(yTitle);
+      svg.appendChild(svgText(padL + plotW / 2, H - 4, "시간", { weight: 600, fill: C.text }));
+
+      const hasAny = items.some(x => x.has_data);
+      if (!hasAny) {
+        svg.appendChild(svgText(W / 2, H / 2, "이 날의 학습 기록이 없어요", { size: 14, fill: C.axis }));
+        chartArea.innerHTML = ""; chartArea.appendChild(svg);
+        return;
+      }
+
+      // 데이터가 있는 시간대만 연결
+      const pts = items.filter(x => x.has_data).map(x => ({ x: xOf(x.hour), y: yOf(x.focus_score), v: x.focus_score, h: x.hour }));
+
+      // 그라데이션
+      const defs = el("defs", {});
+      defs.innerHTML = `<linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${C.blue}" stop-opacity="0.28"/>
+        <stop offset="100%" stop-color="${C.blue}" stop-opacity="0.02"/></linearGradient>`;
+      svg.appendChild(defs);
+
+      const lineD = pts.map((p, i) => (i ? "L" : "M") + p.x + " " + p.y).join(" ");
+      const areaD = `${lineD} L ${pts[pts.length - 1].x} ${yOf(0)} L ${pts[0].x} ${yOf(0)} Z`;
+      svg.appendChild(el("path", { d: areaD, fill: "url(#areaGrad)" }));
+      svg.appendChild(el("path", { d: lineD, fill: "none", stroke: C.blue, "stroke-width": 2.5, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+
+      pts.forEach(p => {
+        svg.appendChild(el("circle", { cx: p.x, cy: p.y, r: 4, fill: "#fff", stroke: C.blue, "stroke-width": 2 }));
+        svg.appendChild(svgText(p.x, p.y - 10, Math.round(p.v) + "%", { size: 10, weight: 700, fill: C.blue }));
+      });
+
+      chartArea.innerHTML = ""; chartArea.appendChild(svg);
+    }
+
+    // ── 주별: 일자별 그룹 막대 (총 학습시간 / 순수 집중시간) ──
+    function renderWeekly(items) {
+      const W = 760, H = 340;
+      const padL = 52, padR = 16, padT = 20, padB = 44;
+      const plotW = W - padL - padR, plotH = H - padT - padB;
+      const svg = newSvg(W, H);
+
+      const maxMin = Math.max(...items.map(x => x.duration_min || 0), ...items.map(x => x.focused_min || 0), 60);
+      // y축을 시간 단위로: 보기 좋은 상한
+      const maxHours = Math.max(1, Math.ceil(maxMin / 60));
+      const yMax = maxHours * 60; // 분
+      const yOf = m => padT + (1 - m / yMax) * plotH;
+
+      // y 그리드 (1시간 단위)
+      const stepH = Math.max(1, Math.ceil(maxHours / 6));
+      for (let hh = 0; hh <= maxHours; hh += stepH) {
+        const y = yOf(hh * 60);
+        svg.appendChild(el("line", { x1: padL, y1: y, x2: W - padR, y2: y, stroke: C.grid, "stroke-width": 1 }));
+        svg.appendChild(svgText(padL - 8, y, hh + "시간", { anchor: "end", baseline: "middle" }));
+      }
+
+      const n = items.length;            // 7
+      const slot = plotW / n;
+      const groupW = slot * 0.62;
+      const barW = groupW / 2 - 3;
+      const dow = ["월", "화", "수", "목", "금", "토", "일"];
+
+      items.forEach((x, i) => {
+        const cx = padL + slot * i + slot / 2;
+        const x1 = cx - groupW / 2;
+        const x2 = cx - groupW / 2 + barW + 6;
+
+        const drawBar = (bx, mins, fill) => {
+          const y = yOf(mins);
+          const h = Math.max(0, yOf(0) - y);
+          svg.appendChild(el("rect", { x: bx, y, width: barW, height: h, rx: 4, fill }));
+          if (mins > 0) svg.appendChild(svgText(bx + barW / 2, y - 5, mins + "분", { size: 9, weight: 700, fill: C.text }));
+        };
+        drawBar(x1, x.duration_min || 0, C.blue);
+        drawBar(x2, x.focused_min || 0, C.mint);
+
+        // x 라벨 (요일 + 날짜)
+        svg.appendChild(svgText(cx, H - padB + 16, dow[i], { weight: 700, fill: C.text }));
+        svg.appendChild(svgText(cx, H - padB + 30, x.date.slice(5), { size: 10 }));
+      });
+
+      // y축 제목
+      const yTitle = svgText(14, padT + plotH / 2, "시간", { weight: 600, fill: C.text });
+      yTitle.setAttribute("transform", `rotate(-90 14 ${padT + plotH / 2})`);
+      svg.appendChild(yTitle);
+
+      // 범례
+      const legend = el("g", {});
+      legend.appendChild(el("rect", { x: padL, y: 2, width: 12, height: 12, rx: 3, fill: C.blue }));
+      legend.appendChild(svgText(padL + 18, 12, "총 학습시간", { anchor: "start", size: 11, fill: C.text }));
+      legend.appendChild(el("rect", { x: padL + 110, y: 2, width: 12, height: 12, rx: 3, fill: C.mint }));
+      legend.appendChild(svgText(padL + 128, 12, "순수 집중시간", { anchor: "start", size: 11, fill: C.text }));
+      svg.appendChild(legend);
+
+      chartArea.innerHTML = ""; chartArea.appendChild(svg);
+    }
+
+    function renderSummary(items, opts) {
+      summaryRow.innerHTML = `
+        <div class="stat-card blue">
+          <div class="label">${opts.l1}</div>
+          <div class="value">${opts.v1}</div>
+        </div>
+        <div class="stat-card mint">
+          <div class="label">${opts.l2}</div>
+          <div class="value">${opts.v2}</div>
+        </div>
+        <div class="stat-card peach">
+          <div class="label">${opts.l3}</div>
+          <div class="value">${opts.v3}</div>
+        </div>`;
+    }
+
+    // ── 메인 렌더 ──
     async function render() {
-      const endpoint = currentTab === "daily" ? "/stats/daily?days=7" : "/stats/weekly?weeks=4";
-      const title = currentTab === "daily" ? "일별 학습 시간 (최근 7일)" : "주별 학습 시간 (최근 4주)";
-      document.getElementById("chartTitle").textContent = title;
-
+      chartArea.innerHTML = `<div class="empty" style="padding:40px 0">불러오는 중…</div>`;
       try {
-        const data = await Api.get(endpoint);
-        const items = data.items || [];
+        if (currentTab === "daily") {
+          const iso = toISO(selectedDate);
+          chartTitle.textContent = `시간대별 집중도 (${iso})`;
+          rangeLabel.textContent = "";
+          const data = await Api.get(`/stats/hourly?date=${iso}`);
+          const items = data.items || [];
 
-        // 요약
-        const totalMin = items.reduce((s, x) => s + (x.duration_min || 0), 0);
-        const scores = items.filter(x => x.focus_score > 0).map(x => x.focus_score);
-        const avgScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : 0;
-        const maxMin = Math.max(...items.map(x => x.duration_min || 0), 0);
+          const active = items.filter(x => x.has_data);
+          const totalMin = items.reduce((s, x) => s + (x.duration_min || 0), 0);
+          const avg = active.length ? (active.reduce((a, b) => a + b.focus_score, 0) / active.length).toFixed(1) : "0";
+          const best = active.reduce((m, x) => x.focus_score > (m ? m.focus_score : -1) ? x : m, null);
+          renderSummary(items, {
+            l1: "총 학습 시간", v1: `${Math.floor(totalMin / 60)}<span class="unit">시간</span> ${totalMin % 60}<span class="unit">분</span>`,
+            l2: "평균 집중도", v2: `${avg}<span class="unit">점</span>`,
+            l3: "최고 집중 시간대", v3: best ? `${best.hour}<span class="unit">시</span>` : `-`,
+          });
+          renderDaily(items);
+        } else {
+          const monday = mondayOf(selectedDate);
+          const sunday = addDays(monday, 6);
+          const iso = toISO(selectedDate);
+          chartTitle.textContent = "요일별 학습 / 집중 시간";
+          rangeLabel.textContent = `${toISO(monday).slice(5)} ~ ${toISO(sunday).slice(5)}`;
+          const data = await Api.get(`/stats/week-days?date=${iso}`);
+          const items = data.items || [];
 
-        document.getElementById("summaryRow").innerHTML = `
-          <div class="stat-card blue">
-            <div class="label">총 학습 시간</div>
-            <div class="value">${Math.floor(totalMin/60)}<span class="unit">시간</span> ${totalMin%60}<span class="unit">분</span></div>
-          </div>
-          <div class="stat-card mint">
-            <div class="label">평균 집중도</div>
-            <div class="value">${avgScore}<span class="unit">점</span></div>
-          </div>
-          <div class="stat-card peach">
-            <div class="label">최다 학습</div>
-            <div class="value">${maxMin}<span class="unit">분</span></div>
-          </div>
-        `;
-
-        // 바 차트
-        const max = Math.max(maxMin, 60);
-        document.getElementById("chartBars").innerHTML = items.map(x => {
-          const h = Math.round((x.duration_min || 0) / max * 100);
-          const label = currentTab === "daily"
-            ? x.date.slice(5)  // MM-DD
-            : x.week_start.slice(5) + "~";
-          return `
-            <div class="chart-bar">
-              <span class="bar-value">${x.duration_min || 0}분</span>
-              <div class="bar" style="height:${h}%"></div>
-              <span class="bar-label">${label}</span>
-            </div>
-          `;
-        }).join("");
-
-        if (!items.length || totalMin === 0) {
-          document.getElementById("chartBars").innerHTML =
-            `<div class="empty" style="width:100%">📊 아직 학습 기록이 없어요</div>`;
+          const totalMin = items.reduce((s, x) => s + (x.duration_min || 0), 0);
+          const focusMin = items.reduce((s, x) => s + (x.focused_min || 0), 0);
+          const scores = items.filter(x => x.focus_score > 0).map(x => x.focus_score);
+          const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : "0";
+          renderSummary(items, {
+            l1: "총 학습 시간", v1: `${Math.floor(totalMin / 60)}<span class="unit">시간</span> ${totalMin % 60}<span class="unit">분</span>`,
+            l2: "순수 집중 시간", v2: `${Math.floor(focusMin / 60)}<span class="unit">시간</span> ${focusMin % 60}<span class="unit">분</span>`,
+            l3: "평균 집중도", v3: `${avg}<span class="unit">점</span>`,
+          });
+          renderWeekly(items);
         }
       } catch (err) {
-        document.getElementById("chartBars").innerHTML = `<div class="error-msg">${err.message}</div>`;
+        chartArea.innerHTML = `<div class="error-msg" style="padding:24px 0">${err.message}</div>`;
       }
     }
 
+    syncDatePicker();
     render();
   </script>
 </body>

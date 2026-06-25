@@ -50,7 +50,12 @@
   <script>
     Auth.requireLogin();
     const info = Auth.getInfo();
-    if (info.account_type !== "admin") { location.href = "/main"; }
+    if (info.role !== "TEACHER" && info.account_type !== "admin") { location.href = "/main"; }
+
+    // 지도자/관리자에 따라 안내 문구 조정
+    if (info.account_type !== "admin") {
+      document.querySelector(".page-header p").textContent = "매칭된 학생의 학습 통계를 확인하세요";
+    }
 
     let students = [];
 
@@ -61,17 +66,32 @@
 
     async function loadStudents() {
       try {
-        const users = await Api.get("/admins/users");
-        students = users.filter(u => u.role === "STUDENT");
+        if (info.account_type === "admin") {
+          const users = await Api.get("/admins/users");
+          students = users.filter(u => u.role === "STUDENT");
+        } else {
+          // 지도자: 매칭된 학생만
+          const data = await Api.get("/users/teacher/students");
+          students = data.students || [];
+        }
         const sel = document.getElementById("studentSelect");
         if (!students.length) {
           sel.innerHTML = `<option value="">학생이 없습니다</option>`;
+          document.getElementById("statsTable").innerHTML =
+            `<div class="empty">매칭된 학생이 없습니다. 학생이 가입 시 지도자 아이디를 입력했는지 확인하세요.</div>`;
           return;
         }
-        sel.innerHTML = `<option value="">-- 전체 --</option>` +
-          students.map(s =>
-            `<option value="${s.id}">${escape(s.name)} (${s.login_id})</option>`
-          ).join("");
+        // 관리자만 '전체' 조회 가능 (지도자는 학생 선택 필수)
+        let opts = (info.account_type === "admin")
+          ? `<option value="">-- 전체 --</option>` : "";
+        opts += students.map(s =>
+          `<option value="${s.id}">${escape(s.name)} (${s.login_id})</option>`
+        ).join("");
+        sel.innerHTML = opts;
+        // URL 파라미터(student_id)로 특정 학생 자동 선택 (홈 카드에서 진입)
+        const qs = new URLSearchParams(location.search);
+        const sid = qs.get("student_id");
+        if (sid && students.find(s => s.id == sid)) sel.value = sid;
         loadStats();
       } catch (err) {
         document.getElementById("statsTable").innerHTML =

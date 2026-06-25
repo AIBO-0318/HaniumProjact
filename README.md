@@ -6,17 +6,26 @@
 
 ## 바로 사용하기
 
+> 이 프로젝트는 **로컬/LAN 서버 모드**로 동작합니다. 서버 PC 한 대에서
+> Spring Boot(REST+웹, 8000) + FastAPI AI(시선추적, 8001) + PostgreSQL 을 실행하고,
+> 같은 공유기(Wi-Fi/LAN)의 다른 기기에서 접속합니다.
+
 ### 방법 1 — 웹 브라우저 접속 (설치 불필요)
 
+서버 PC에서:
 ```
-https://haniumproject.onrender.com
+http://127.0.0.1:8000
+```
+LAN 내 다른 기기(같은 Wi-Fi)에서:
+```
+http://<서버PC의_사설IP>:8000     예) http://172.31.57.34:8000
 ```
 
-1. 위 주소를 브라우저에 입력
+1. 위 주소를 브라우저에 입력 (서버 PC의 IP는 `ipconfig` 의 IPv4 주소)
 2. **회원가입** 클릭 → 이름, ID, 비밀번호, 역할 선택 후 가입
 3. 관리자 승인 후 로그인 → 사용 시작
 
-> 첫 접속은 서버 시작으로 인해 약 30초 소요될 수 있습니다.
+> LAN 접속이 안 되면 서버 PC의 **방화벽 인바운드 8000포트**를 허용했는지 확인하세요(아래 참고).
 
 ---
 
@@ -41,18 +50,12 @@ https://haniumproject.onrender.com
 
 ### 관리자 계정 생성
 
-서버 URL 뒤에 `/docs` 를 입력해 API 문서 접속:
-```
-https://haniumproject.onrender.com/docs
-```
-`POST /admins/signup` 항목을 열고 아래 내용으로 실행:
-```json
-{
-  "admin_id": "admin",
-  "password": "비밀번호입력",
-  "name": "관리자",
-  "level": 9
-}
+서버 PC에서 PowerShell 로 `POST /admins/signup` 호출:
+```powershell
+$body = '{"admin_id":"admin","password":"비밀번호입력","name":"관리자","level":9}'
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/admins/signup" -Method POST `
+  -ContentType "application/json; charset=utf-8" `
+  -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
 ```
 
 ---
@@ -111,20 +114,30 @@ python run_backend.py
 
 ```bash
 python build_exe.py
-# 서버 URL 입력 (배포 URL 또는 엔터로 로컬 모드)
-# → dist/I-Study/I-Study.exe 생성
+# 서버 URL 입력: 엔터만 누르면 이 PC의 LAN 주소(http://<사설IP>:8000)로 빌드
+# → dist/I-Study/I-Study.exe 생성 (EXE 옆 _server_url.txt 에 서버 URL 번들링)
 ```
 
-### 서버 배포 (Render + Neon)
+### LAN 서버 실행 (서버 PC 한 대)
 
-1. [neon.tech](https://neon.tech) — PostgreSQL 무료 생성 → 연결 문자열 복사
-2. [render.com](https://render.com) — Web Service 생성
-   - Root Directory: `backend_db`
-   - Build Command: `pip install -r ../requirements.txt`
-   - Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-   - 환경변수: `DATABASE_URL`, `JWT_SECRET`
-3. 배포 URL을 GitHub Secret `ISTUDY_SERVER_URL` 에 등록
-4. `git tag v1.0 && git push origin v1.0` → EXE 자동 빌드 + GitHub Release
+1. **Spring Boot (REST + 웹, 8000)**
+   ```powershell
+   cd backend_spring
+   .\run.bat            # JAVA_HOME 자동 설정 + gradlew bootRun
+   ```
+2. **FastAPI AI (시선추적 WS, 8001)**
+   ```powershell
+   python run_ai_server.py
+   ```
+3. **방화벽 인바운드 허용** (최초 1회, 관리자 PowerShell)
+   ```powershell
+   New-NetFirewallRule -DisplayName "I-Study 8000" -Direction Inbound `
+     -Protocol TCP -LocalPort 8000 -Action Allow
+   New-NetFirewallRule -DisplayName "I-Study 8001" -Direction Inbound `
+     -Protocol TCP -LocalPort 8001 -Action Allow
+   ```
+4. 클라이언트는 `.env` 의 `API_SERVER_URL=http://<서버PC IP>:8000` 으로 접속.
+   (서버 PC IP가 DHCP로 바뀌면 값을 갱신; 고정 IP 권장)
 
 </details>
 

@@ -1,8 +1,8 @@
 """
 I-Study - API Client
-FastAPI 서버(원격 Render 또는 localhost)와 통신하는 HTTP 클라이언트.
+백엔드 서버(로컬/LAN 의 Spring Boot, 기본 8000)와 통신하는 HTTP 클라이언트.
 
-원격 모드에서는 로컬 PostgreSQL이 없으므로, 통신 실패 시
+서버에 연결할 수 없을 때(오프라인)는 통신 실패 시
 빈 결과([] / 0 / False)를 반환하여 앱이 죽지 않도록 한다.
 """
 

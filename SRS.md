@@ -173,20 +173,20 @@ I-Study/
 
 ---
 
-### ✅ 방법 A — 웹 브라우저로 접속 (가장 간단)
+### ✅ 방법 A — 웹 브라우저로 접속 (로컬/LAN 서버)
 
-배포된 서버 URL을 브라우저에 입력하면 바로 사용 가능합니다.  
-PostgreSQL, Python 설치 **불필요**.
+서버 PC에서 Spring Boot 가 실행 중이면, 같은 공유기(LAN)의 어느 기기든 접속 가능합니다.
 
 ```
-https://haniumproject.onrender.com   ← 실제 배포 URL
+서버 PC 본인:    http://127.0.0.1:8000
+LAN 다른 기기:    http://<서버PC IP>:8000   예) http://172.31.57.34:8000
 ```
 
-1. 위 URL 접속
+1. 위 URL 접속 (서버 PC IP는 `ipconfig` 의 IPv4)
 2. **회원가입** → 관리자 승인 대기
 3. 승인 후 로그인 → 사용 시작
 
-> ⚠️ 무료 서버는 15분 미사용 시 슬립 상태가 됩니다. 첫 접속이 느릴 수 있습니다 (약 30초).
+> ⚠️ LAN 접속이 안 되면 서버 PC의 방화벽 인바운드 8000포트를 허용하세요.
 
 ---
 
@@ -249,48 +249,45 @@ python run_backend.py
 
 #### 초기 관리자 계정 생성
 
-서버 실행 후 http://localhost:8000/docs 에서 `POST /admins/signup` 호출:
+서버 실행 후 PowerShell 로 `POST /admins/signup` 호출:
 
-```json
-{
-  "admin_id": "admin",
-  "password": "비밀번호",
-  "name": "관리자",
-  "level": 9
-}
+```powershell
+$body = '{"admin_id":"admin","password":"비밀번호","name":"관리자","level":9}'
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/admins/signup" -Method POST `
+  -ContentType "application/json; charset=utf-8" `
+  -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
 ```
 
-이후 http://localhost:8000 에서 일반 회원가입 → 관리자 로그인 후 사용자 승인.
+이후 http://127.0.0.1:8000 에서 일반 회원가입 → 관리자 로그인 후 사용자 승인.
 
 ---
 
-### 🔧 서버 배포 (개발자용)
+### 🔧 LAN 서버 운영 (개발자/관리자용)
 
-#### 1. Neon에서 PostgreSQL 생성
-1. [neon.tech](https://neon.tech) → GitHub 로그인
-2. **Create Project** → 프로젝트 생성
-3. 연결 문자열 복사: `postgresql://user:pass@ep-xxx.neon.tech/neondb`
+서버 PC 한 대에서 아래 세 가지를 띄우면, 같은 공유기의 모든 기기가 접속합니다.
 
-#### 2. Render에서 웹 서버 배포
-1. [render.com](https://render.com) → GitHub 로그인
-2. **New → Web Service** → 이 저장소 선택
-3. 설정:
-   - **Root Directory**: `backend_db`
-   - **Build Command**: `pip install -r ../requirements.txt`
-   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-4. **Environment Variables** 추가:
-   ```
-   DATABASE_URL = (Neon에서 복사한 연결 문자열)
-   JWT_SECRET   = (랜덤 문자열)
-   ```
-5. **Create Web Service** → 배포 완료 후 URL 확인
+#### 1. PostgreSQL (서버 PC 로컬)
+- 로컬 PostgreSQL 에 `istudy` DB 구성 (`backend_spring/src/main/resources/schema.sql`).
+- `.env` 에 `DB_HOST=localhost`, `DB_PASSWORD=...` 설정.
 
-#### 3. EXE 빌드 (배포 URL 포함)
+#### 2. Spring Boot (REST + 웹, 8000) + FastAPI AI (8001)
+```powershell
+cd backend_spring; .\run.bat        # 8000
+python run_ai_server.py             # 8001 (시선추적 WS)
+```
+`application.yml` 의 `server.address=0.0.0.0` 로 LAN 전체 접속 허용.
 
+#### 3. 방화벽 인바운드 허용 (최초 1회, 관리자 PowerShell)
+```powershell
+New-NetFirewallRule -DisplayName "I-Study 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow
+New-NetFirewallRule -DisplayName "I-Study 8001" -Direction Inbound -Protocol TCP -LocalPort 8001 -Action Allow
+```
+
+#### 4. EXE 빌드 (서버 PC IP 포함)
 ```bash
 python build_exe.py
-# 프롬프트에 Render URL 입력
-# → dist/I-Study/ 폴더를 ZIP으로 압축 → GitHub Releases에 업로드
+# 엔터만 누르면 이 PC의 LAN 주소(http://<사설IP>:8000)로 빌드
+# → dist/I-Study/ 폴더를 배포 (같은 LAN 기기에서 실행)
 ```
 
 ---
