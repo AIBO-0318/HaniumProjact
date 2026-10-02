@@ -248,11 +248,6 @@ class FocusEyePro(ctk.CTk):
         self.status_dot.configure(text_color=GREEN)
         self.status_indicator.configure(text="🔵 열심히 공부 중!")
 
-        if hasattr(self, 'wl_focus_switch'):
-            self.wl_focus_switch.select()
-        if hasattr(self, 'wl_stat_labels') and "집중 모드" in self.wl_stat_labels:
-            self.wl_stat_labels["집중 모드"].configure(text="ON")
-
         self._update_camera()
         self._update_timer()
 
@@ -301,11 +296,6 @@ class FocusEyePro(ctk.CTk):
         self.gaze_status_badge.configure(text="-")
         self.timer_label.configure(text="00 : 00 : 00")
         self.camera_label.configure(text="📷 카메라 대기 중", image=None)
-
-        if hasattr(self, 'wl_focus_switch'):
-            self.wl_focus_switch.deselect()
-        if hasattr(self, 'wl_stat_labels') and "집중 모드" in self.wl_stat_labels:
-            self.wl_stat_labels["집중 모드"].configure(text="OFF")
 
         self._update_home_stats()
 
