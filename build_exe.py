@@ -146,6 +146,7 @@ def build():
         "jose.jwt",
         "bcrypt",
         "mediapipe",
+        "ai_core.frame_analyzer",  # backend_db/api/gaze_ws.py 가 지연 import
         "customtkinter",
         "cv2",
         "PIL",

@@ -1,100 +1,80 @@
 """
-I-Study Beta - ?�캠 ?�선 추적 WebSocket ?�우??(골격)
+I-Study - 웹캠 시선 추적 WebSocket 라우터 (/ws/gaze)
 
-??개요 ??브라?��?(?�캠)
-   ?? 1) 카메???�레??캡처 (canvas ??JPEG/base64)
-   ?? 2) WebSocket ?�로 ?�버???�송
-   ??FastAPI WebSocket (???�일)
-   ?? 3) ?�레???�코??(base64 ??numpy)
-   ?? 4) GazeEstimator �?처리 (FaceTracker ??Kalman ??...)
-   ?? 5) 결과(?�선좌표/집중?? JSON ?�로 ?�답
-   ??브라?��?
-   ?? 6) UI??결과 반영 (overlay, score)
+흐름
+  브라우저(웹캠)  1) 카메라 프레임 캡처 (canvas → JPEG/base64)
+                 2) WebSocket 으로 서버에 전송
+  FastAPI        3) 프레임 디코딩 (base64 → numpy)
+                 4) FrameGazeAnalyzer 로 분석 (데스크톱 GazeTracker 와 같은 판정 로직)
+                 5) 결과(시선 좌표/집중도)를 JSON 으로 응답
+  브라우저        6) UI 에 결과 반영 (overlay, score)
 
-???�합 가?�드 ??1) 기존 ?�선 추적 로직?� 모두 `core/` ?�래 모듈�?분리?�어 ?�습?�다.
-   - core/face_tracker.py
-   - core/kalman_filter.py
-   - core/calibration.py
-   - core/focus_analyzer.py
-   - core/gaze_estimator.py  (?�합 ?�진)
-
-2) ?�스?�톱 ?�에?�는 `GazeEstimator`가 카메??VideoCapture)�?직접 ?��?�?
-   ?�에?�는 **?�레???�력?�만 ?�릅?�다**.
-   ??`FaceTracker.process_frame(frame)` �?그�?�??�사?�하�?
-     카메??캡처/UI 부분�? 브라?��?가 ?�당?�니??
-
-3) ?�라?????�일?�서??`FaceTracker` + `KalmanFilter` + `FocusAnalyzer` �?   직접 ?�스?�스?�하???�용?�니??
-
-4) ?�용?�별 ?�션 격리: �?WebSocket ?�결마다 별도??추적 ?�스?�스�??�성?�니??
-
-?�️ ?�능 주의:
-- WebSocket ?�로 base64 JPEG �??�송?�면 30fps 기�? ??2~5 Mbps ?�래??발생.
-- ?�로?�션?�서??WebRTC + MediaSoup/Janus ?�는 WebTransport 가 ???�율?�입?�다.
-- MVP ?�계?�서????WebSocket 방식?�로 충분?�니??
+- 연결(사용자)마다 별도의 분석기 인스턴스를 만든다.
+- 분석(MediaPipe 추론)은 이벤트 루프를 막지 않도록 스레드에서 돌린다.
+- base64 JPEG 를 30fps 로 보내면 2~5 Mbps 수준 — MVP 용도로는 충분하다.
 """
 
+import asyncio
 import base64
 import json
+import os
+import sys
 from typing import Optional
 
-import numpy as np
 import cv2
+import numpy as np
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, status
-from jose import JWTError
 
 from auth import decode_token
 
 router = APIRouter(prefix="/ws", tags=["WebSocket"])
 
 
-# ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
-# ?�선 추적 ?�진 (지??import: core 모듈?� 무거?�)
-# ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
-
 def _create_tracker():
-    """
-    ?�용?�별 ?�래�??�스?�스 ?�성.
-    core 모듈??server ?� 같�? ?�로?�트???�다�?가??(sys.path ?�인).
-    """
-    import sys, os
-    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    if PROJECT_ROOT not in sys.path:
-        sys.path.insert(0, PROJECT_ROOT)
+    """연결별 분석기 생성 (ai_core 는 프로젝트 루트 기준으로 import)"""
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
 
-    from core.face_tracker import FaceTracker
-    from core.kalman_filter import GazeKalmanFilter
-    from core.focus_analyzer import FocusAnalyzer
+    from ai_core.frame_analyzer import FrameGazeAnalyzer
+    from shared.config import GAZE_LOST_THRESHOLD, EYE_CLOSURE_THRESHOLD
 
-    # ?�면 ?�기???�라?�언?�에??보내?�면 갱신 가??(기본 1920x1080)
-    return {
-        "face": FaceTracker(),
-        "kalman": GazeKalmanFilter(1920, 1080),
-        "focus": FocusAnalyzer(),
-    }
+    return FrameGazeAnalyzer(gaze_lost_threshold=GAZE_LOST_THRESHOLD,
+                             eye_closure_threshold=EYE_CLOSURE_THRESHOLD)
 
 
-# ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
-# WebSocket ?�드?�인??# ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+def _decode_frame(data_url: str):
+    """'data:image/jpeg;base64,...' 또는 순수 base64 → BGR numpy (실패 시 None)"""
+    b64 = data_url.split(",", 1)[1] if "," in data_url else data_url
+    try:
+        arr = np.frombuffer(base64.b64decode(b64), dtype=np.uint8)
+        return cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    except Exception:
+        return None
+
 
 @router.websocket("/gaze")
 async def gaze_stream(websocket: WebSocket, token: Optional[str] = Query(default=None)):
     """
-    ?�라?�언?????�버 메시지 ?�식 (JSON):
+    클라이언트 → 서버 (JSON)
         { "type": "frame", "image": "<base64 jpeg>", "screen": [w, h] }
-        { "type": "config", ... }
+        { "type": "ping" }
 
-    ?�버 ???�라?�언???�답 ?�식 (JSON):
+    서버 → 클라이언트 (JSON)
+        { "type": "result", "face_detected": false }
         {
           "type": "result",
-          "face_detected": bool,
-          "gaze": [x, y],          # 0~1 ?�규??(?�는 ?��?)
-          "head": {"yaw": float, "pitch": float},
-          "ear": float,
+          "face_detected": true,
+          "gaze": [x, y],                 # 얼굴 방향 비율 0~1 (0.5 = 정면)
+          "head": {"yaw": float, "pitch": float},   # 도(°)
+          "ear": float,                   # 눈 세로/가로 비율 평균
+          "direction": "center" | "left" | "right" | "up" | "down",
           "focus_state": "Focused" | "Dazed" | "Distracted",
           "focus_score": 0~100
         }
+        { "type": "pong" }
     """
-    # ?�?�?� ?�증: JWT ?�큰??query param ?�로 받음 ?�?�?�
+    # 인증: Spring 이 발급한 JWT 를 query param 으로 받음
     if not token:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
@@ -108,7 +88,12 @@ async def gaze_stream(websocket: WebSocket, token: Optional[str] = Query(default
     role = payload.get("role")
 
     await websocket.accept()
-    tracker = _create_tracker()
+    try:
+        tracker = await asyncio.to_thread(_create_tracker)
+    except Exception as e:
+        print(f"[ws/gaze] tracker init failed: {e}")
+        await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+        return
     print(f"[ws/gaze] connected user={user_id} role={role}")
 
     try:
@@ -120,51 +105,12 @@ async def gaze_stream(websocket: WebSocket, token: Optional[str] = Query(default
                 continue
 
             mtype = msg.get("type")
-
             if mtype == "frame":
-                # 1) base64 ??numpy
-                b64 = msg.get("image", "")
-                if "," in b64:
-                    b64 = b64.split(",", 1)[1]
-                try:
-                    img_bytes = base64.b64decode(b64)
-                    arr = np.frombuffer(img_bytes, dtype=np.uint8)
-                    frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-                except Exception:
-                    continue
+                frame = _decode_frame(msg.get("image", ""))
                 if frame is None:
                     continue
-
-                # 2) ?�선 추적 처리
-                result = tracker["face"].process_frame(frame)
-                if not result.get("face_detected"):
-                    await websocket.send_json({
-                        "type": "result",
-                        "face_detected": False,
-                    })
-                    continue
-
-                # ?�이브리??결합
-                from shared.config import ALPHA_IRIS, ALPHA_HEAD
-                gx = ALPHA_IRIS * result["iris_x"] + ALPHA_HEAD * (result["yaw"] / 30.0)
-                gy = ALPHA_IRIS * result["iris_y"] + ALPHA_HEAD * (result["pitch"] / 25.0)
-
-                # Kalman
-                sx, sy = tracker["kalman"].update(gx, gy)
-
-                # Focus
-                tracker["focus"].update(sx, sy, result["ear"], in_window=True)
-
-                await websocket.send_json({
-                    "type": "result",
-                    "face_detected": True,
-                    "gaze": [sx, sy],
-                    "head": {"yaw": result["yaw"], "pitch": result["pitch"]},
-                    "ear": result["ear"],
-                    "focus_state": tracker["focus"].state,
-                    "focus_score": round(tracker["focus"].focus_score, 1),
-                })
-
+                result = await asyncio.to_thread(tracker.analyze, frame)
+                await websocket.send_json({"type": "result", **result})
             elif mtype == "ping":
                 await websocket.send_json({"type": "pong"})
 

@@ -72,6 +72,7 @@ class GazeTracker:
         
         self.model_path = self._ensure_model()
         self.landmarker = None
+        self.last_detection = None
         
         self.cap = None
         self.is_running = False
@@ -141,8 +142,8 @@ class GazeTracker:
 
         return download_path
     
-    def _create_landmarker(self):
-        """FaceLandmarker 생성"""
+    def _create_landmarker(self, with_pose: bool = False):
+        """FaceLandmarker 생성 (with_pose=True 면 머리 자세 변환행렬도 출력)"""
         # 모델을 바이트로 읽어 buffer로 전달한다.
         # MediaPipe의 C++ 파일 로더는 한글 등 비-ASCII 경로를 열지 못하므로
         # (예: '배포_다른PC용') Python에서 직접 읽어 우회한다.
@@ -152,7 +153,7 @@ class GazeTracker:
         options = vision.FaceLandmarkerOptions(
             base_options=base_options,
             output_face_blendshapes=False,
-            output_facial_transformation_matrixes=False,
+            output_facial_transformation_matrixes=with_pose,
             num_faces=1
         )
         self.landmarker = vision.FaceLandmarker.create_from_options(options)
@@ -214,6 +215,7 @@ class GazeTracker:
         except Exception:
             return False, "no_face"
         
+        self.last_detection = results
         if not results.face_landmarks:
             return False, "no_face"
         
