@@ -309,11 +309,6 @@ class FocusEyePro(ctk.CTk):
 
         self._update_home_stats()
 
-        if self.current_page == "stats":
-            self.stats_page.refresh()
-        else:
-            self.stats_page._refresh_stats_logs()
-
     # ═══════════════════════════════════════
     #  화이트리스트 모니터
     # ═══════════════════════════════════════

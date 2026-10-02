@@ -52,8 +52,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,
                         "/users/login", "/users/signup",
                         "/admins/login", "/admins/signup").permitAll()
-                // 데스크톱 레거시 (익명)
-                .requestMatchers("/api/**", "/headpose").permitAll()
+                // 데스크톱 레거시 — 조회만 익명 허용 (추가/삭제는 관리자 토큰 필요)
+                .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
+                .requestMatchers("/headpose").permitAll()
                 // 정적 리소스
                 .requestMatchers("/static/**", "/favicon.ico", "/error").permitAll()
                 // 정적 HTML 페이지

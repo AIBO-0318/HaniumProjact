@@ -70,7 +70,7 @@ public class WhitelistController {
                                           @RequestBody CreateRequest body,
                                           @AuthenticationPrincipal AuthPrincipal principal) {
         ensureRoleCanManage(principal, studentId);
-        if (repo.findByUserIdAndUrl(studentId, body.url()).isPresent())
+        if (repo.existsByUserIdAndUrl(studentId, WhitelistUrlRepository.withoutTrailingSlash(body.url())))
             throw ApiException.badRequest("이미 등록된 URL입니다.");
         WhitelistUrl item = new WhitelistUrl();
         item.setName(body.name());
@@ -106,7 +106,7 @@ public class WhitelistController {
     public Map<String, Object> addDefault(@RequestBody CreateRequest body,
                                           @AuthenticationPrincipal AuthPrincipal principal) {
         accounts.requireAdmin(principal);
-        if (repo.findDefaultByUrl(body.url()).isPresent())
+        if (repo.existsDefaultByUrl(WhitelistUrlRepository.withoutTrailingSlash(body.url())))
             throw ApiException.badRequest("이미 등록된 기본 URL입니다.");
         WhitelistUrl item = new WhitelistUrl();
         item.setName(body.name());

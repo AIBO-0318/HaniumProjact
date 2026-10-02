@@ -5,8 +5,11 @@ import com.istudy.entity.WhitelistUrl;
 import com.istudy.exception.ApiException;
 import com.istudy.repository.GazeSettingsRepository;
 import com.istudy.repository.WhitelistUrlRepository;
+import com.istudy.security.Accounts;
+import com.istudy.security.AuthPrincipal;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
@@ -14,7 +17,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * /api/* — 데스크톱 앱 호환용 레거시 (익명 접근).
+ * /api/* — 데스크톱 앱 호환용 레거시.
+ * 조회(GET)는 익명 접근, 기본 화이트리스트 추가/삭제는 관리자만.
  * 동일 PostgreSQL DB 를 공유한다.
  */
 @RestController
@@ -23,10 +27,13 @@ public class LegacyController {
 
     private final WhitelistUrlRepository whitelistRepo;
     private final GazeSettingsRepository gazeRepo;
+    private final Accounts accounts;
 
-    public LegacyController(WhitelistUrlRepository whitelistRepo, GazeSettingsRepository gazeRepo) {
+    public LegacyController(WhitelistUrlRepository whitelistRepo, GazeSettingsRepository gazeRepo,
+                            Accounts accounts) {
         this.whitelistRepo = whitelistRepo;
         this.gazeRepo = gazeRepo;
+        this.accounts = accounts;
     }
 
     public record WhitelistCreate(@NotBlank String name, @NotBlank String url) {}
@@ -47,8 +54,10 @@ public class LegacyController {
 
     @PostMapping("/whitelist")
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, Object> addDefault(@RequestBody WhitelistCreate body) {
-        if (whitelistRepo.findDefaultByUrl(body.url()).isPresent())
+    public Map<String, Object> addDefault(@RequestBody WhitelistCreate body,
+                                          @AuthenticationPrincipal AuthPrincipal principal) {
+        accounts.requireAdmin(principal);
+        if (whitelistRepo.existsDefaultByUrl(WhitelistUrlRepository.withoutTrailingSlash(body.url())))
             throw ApiException.badRequest("이미 등록된 URL입니다.");
         WhitelistUrl item = new WhitelistUrl();
         item.setName(body.name());
@@ -58,7 +67,9 @@ public class LegacyController {
     }
 
     @DeleteMapping("/whitelist/{urlId}")
-    public Map<String, Object> deleteDefault(@PathVariable Integer urlId) {
+    public Map<String, Object> deleteDefault(@PathVariable Integer urlId,
+                                             @AuthenticationPrincipal AuthPrincipal principal) {
+        accounts.requireAdmin(principal);
         WhitelistUrl item = whitelistRepo.findById(urlId)
                 .orElseThrow(() -> ApiException.notFound("URL을 찾을 수 없습니다."));
         whitelistRepo.delete(item);
