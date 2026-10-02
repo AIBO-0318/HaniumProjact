@@ -45,14 +45,23 @@ public class AdminController {
 
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
-    public AdminDtos.Response signup(@Valid @RequestBody AdminDtos.SignupRequest req) {
+    public AdminDtos.Response signup(@Valid @RequestBody AdminDtos.SignupRequest req,
+                                     @AuthenticationPrincipal AuthPrincipal principal) {
+        // 관리자 계정은 로그인한 관리자만 만들 수 있다 (관리자가 한 명도 없을 때의 최초 1명만 예외)
+        int level = req.level() != null ? req.level() : 1;
+        if (adminRepo.count() > 0) {
+            Admin creator = accounts.requireAdmin(principal);
+            int creatorLevel = creator.getLevel() != null ? creator.getLevel() : 1;
+            if (level > creatorLevel)
+                throw ApiException.forbidden("자신보다 높은 등급의 관리자는 만들 수 없습니다.");
+        }
         if (adminRepo.existsByAdminId(req.admin_id()))
             throw ApiException.badRequest("이미 존재하는 관리자 아이디입니다.");
         Admin admin = new Admin();
         admin.setAdminId(req.admin_id());
         admin.setPasswordHash(encoder.encode(req.password()));
         admin.setName(req.name());
-        admin.setLevel(req.level() != null ? req.level() : 1);
+        admin.setLevel(level);
         return AdminDtos.Response.of(adminRepo.save(admin));
     }
 

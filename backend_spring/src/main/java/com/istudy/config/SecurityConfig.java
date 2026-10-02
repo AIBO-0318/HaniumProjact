@@ -48,7 +48,7 @@ public class SecurityConfig {
             .cors(c -> c.configurationSource(corsSource()))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // 인증/가입 (공개)
+                // 인증/가입 (공개 — 단 /admins/signup 은 컨트롤러에서 관리자 토큰 확인)
                 .requestMatchers(HttpMethod.POST,
                         "/users/login", "/users/signup",
                         "/admins/login", "/admins/signup").permitAll()
