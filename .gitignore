@@ -50,4 +50,7 @@ Thumbs.db
 
 # E2E 테스트 산출물 (테스트 계정 비밀번호·웹캠 스크린샷 포함)
 tests/e2e/e2e_accounts.json
+
+# 시연용 테스트 계정 (배포 압축 파일로만 전달)
+테스트계정.txt
 tests/e2e/results/
