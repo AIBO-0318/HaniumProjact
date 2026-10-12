@@ -15,8 +15,26 @@ import subprocess
 import sys
 import os
 import shutil
+import urllib.request
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(PROJECT_ROOT, "ai_core", "models", "face_landmarker.task")
+
+
+def ensure_model():
+    """EXE 에 번들할 시선 추적 모델 준비 (git 에 없음 → 앱 실행 때 받은 파일을 복사, 없으면 다운로드)"""
+    if os.path.exists(MODEL_PATH):
+        return
+    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+    downloaded = os.path.join(PROJECT_ROOT, "models", "face_landmarker.task")
+    if os.path.exists(downloaded):
+        shutil.copy2(downloaded, MODEL_PATH)
+        print(f"[✓] 시선 추적 모델 복사: {downloaded}")
+        return
+    from ai_core.gaze_tracker import GazeTracker
+    print("[!] 시선 추적 모델이 없어 내려받습니다 (약 4MB)...")
+    urllib.request.urlretrieve(GazeTracker.MODEL_URL, MODEL_PATH)
+    print("[✓] 시선 추적 모델 다운로드 완료")
 
 
 def check_pyinstaller():
@@ -86,6 +104,7 @@ def get_server_url() -> str:
 
 def build():
     check_pyinstaller()
+    ensure_model()
 
     server_url = get_server_url()
 
@@ -212,6 +231,7 @@ def build():
     else:
         print()
         print("[!] 빌드 실패. 위의 에러 메시지를 확인하세요.")
+        sys.exit(result.returncode)
 
 
 if __name__ == "__main__":
