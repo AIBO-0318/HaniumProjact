@@ -6,7 +6,9 @@ DB 통합 마이그레이션 스크립트
 """
 import psycopg2
 
-conn = psycopg2.connect(host='localhost', dbname='istudy', user='postgres', password='aisw2026')
+from shared.env_config import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+
+conn = psycopg2.connect(host=DB_HOST, port=DB_PORT, dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD)
 conn.autocommit = False
 cur = conn.cursor()
 

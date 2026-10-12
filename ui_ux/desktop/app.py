@@ -215,14 +215,16 @@ class FocusEyePro(ctk.CTk):
     def _start_study(self):
         try:
             if self.gaze_tracker is None:
-                self.gaze_tracker = GazeTracker(
+                tracker = GazeTracker(
                     gaze_lost_threshold=GAZE_LOST_THRESHOLD,
                     eye_closure_threshold=EYE_CLOSURE_THRESHOLD,
                     on_gaze_lost=self._on_gaze_lost,
                     on_gaze_restored=self._on_gaze_restored,
                     on_eye_closed=self._on_eye_closed
                 )
-                self.gaze_tracker.start()
+                # 카메라가 열린 뒤에만 보관 — 실패한 추적기가 남으면 다음 클릭에 카메라 없이 시작된다
+                tracker.start()
+                self.gaze_tracker = tracker
                 time.sleep(0.5)
             else:
                 self.gaze_tracker.on_gaze_lost = self._on_gaze_lost
@@ -230,7 +232,13 @@ class FocusEyePro(ctk.CTk):
                 self.gaze_tracker.on_eye_closed = self._on_eye_closed
                 self.gaze_tracker.reset_session_stats()
         except Exception as e:
-            messagebox.showerror("오류", f"카메라 시작 실패: {e}")
+            messagebox.showerror(
+                "집중 모드를 시작할 수 없습니다",
+                "웹캠을 열 수 없습니다.\n\n"
+                "· 웹캠이 PC에 연결되어 있는지 확인하세요.\n"
+                "· Zoom·카메라 앱 등 다른 프로그램이 웹캠을 쓰고 있으면 닫아 주세요.\n"
+                "· Windows 설정 > 개인 정보 > 카메라에서 앱의 카메라 접근이 켜져 있는지 확인하세요.\n\n"
+                f"(상세: {e})")
             return
 
         self._start_whitelist_monitor()
@@ -247,11 +255,6 @@ class FocusEyePro(ctk.CTk):
         self.session_label.configure(text="  학습 진행 중")
         self.status_dot.configure(text_color=GREEN)
         self.status_indicator.configure(text="🔵 열심히 공부 중!")
-
-        if hasattr(self, 'wl_focus_switch'):
-            self.wl_focus_switch.select()
-        if hasattr(self, 'wl_stat_labels') and "집중 모드" in self.wl_stat_labels:
-            self.wl_stat_labels["집중 모드"].configure(text="ON")
 
         self._update_camera()
         self._update_timer()
@@ -302,17 +305,7 @@ class FocusEyePro(ctk.CTk):
         self.timer_label.configure(text="00 : 00 : 00")
         self.camera_label.configure(text="📷 카메라 대기 중", image=None)
 
-        if hasattr(self, 'wl_focus_switch'):
-            self.wl_focus_switch.deselect()
-        if hasattr(self, 'wl_stat_labels') and "집중 모드" in self.wl_stat_labels:
-            self.wl_stat_labels["집중 모드"].configure(text="OFF")
-
         self._update_home_stats()
-
-        if self.current_page == "stats":
-            self.stats_page.refresh()
-        else:
-            self.stats_page._refresh_stats_logs()
 
     # ═══════════════════════════════════════
     #  화이트리스트 모니터

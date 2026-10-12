@@ -128,7 +128,7 @@ matplotlib.rcParams['axes.unicode_minus'] = False
 1. https://www.postgresql.org/download/windows/ 에서 설치 파일 다운로드
 2. 설치 진행 시 설정:
    - **포트**: `5432` (기본값)
-   - **슈퍼유저 비밀번호**: `aisw2026`
+   - **슈퍼유저 비밀번호**: 직접 정한 비밀번호 (이후 `.env` 의 `DB_PASSWORD` 에 입력)
    - **로케일**: Korean, Korea 또는 기본값
 3. 설치 완료 후 서비스가 자동 시작됩니다.
 
@@ -153,22 +153,24 @@ localhost:5432 - 접속을 받아드리는 중
 수동 생성이 필요한 경우:
 
 ```powershell
-$env:PGPASSWORD='aisw2026'
+$env:PGPASSWORD='<설치 때 정한 비밀번호>'
 & "C:\Program Files\PostgreSQL\<버전>\bin\psql" -h localhost -U postgres -c "CREATE DATABASE istudy;"
 ```
 
 ### 3-4. DB 접속 정보 확인
 
-`server/database.py` 파일의 접속 정보가 환경과 일치하는지 확인합니다:
+접속 정보는 코드에 적지 않고 프로젝트 루트의 `.env` 에서 읽습니다 (`.env` 는 git 에 올라가지 않음).
+`.env.example` 을 `.env` 로 복사한 뒤 값을 채우세요:
 
-```python
-DATABASE_URL = "postgresql://postgres:aisw2026@localhost:5432/istudy"
+```
+DB_USER=postgres
+DB_PASSWORD=<설치 때 정한 비밀번호>
 ```
 
 | 항목 | 기본값 | 설명 |
 |------|--------|------|
 | 사용자 | `postgres` | PostgreSQL 슈퍼유저 |
-| 비밀번호 | `aisw2026` | 설치 시 설정한 비밀번호 |
+| 비밀번호 | (없음) | 설치 시 설정한 비밀번호 — `.env` 에만 입력 |
 | 호스트 | `localhost` | 로컬 실행 |
 | 포트 | `5432` | PostgreSQL 기본 포트 |
 | DB 이름 | `istudy` | 위에서 생성한 DB |
@@ -264,7 +266,7 @@ Invoke-RestMethod -Uri "http://localhost:8000/headpose" -Method POST `
 
 ```powershell
 $env:PAGER='more'
-$env:PGPASSWORD='aisw2026'
+$env:PGPASSWORD='<설치 때 정한 비밀번호>'
 & "C:\Program Files\PostgreSQL\<버전>\bin\psql" -h localhost -U postgres -d istudy -c "SELECT * FROM whitelist_urls;"
 ```
 
@@ -339,7 +341,7 @@ sqlalchemy.exc.OperationalError: (psycopg2.OperationalError)
 
 **원인 및 해결**:
 - PostgreSQL 서비스가 실행 중인지 확인
-- 비밀번호가 `aisw2026`과 일치하는지 확인
+- `.env` 의 `DB_PASSWORD` 가 설치 때 정한 비밀번호와 같은지 확인
 - `istudy` 데이터베이스가 생성되었는지 확인
 - 포트가 5432인지 확인
 
@@ -431,7 +433,7 @@ I-Study/
 새 PC에서 아래 순서대로 따라하면 됩니다:
 
 - [ ] Python 3.10+ 설치 (PATH 추가 체크)
-- [ ] PostgreSQL 설치 (비밀번호: `aisw2026`)
+- [ ] PostgreSQL 설치 (비밀번호는 직접 정하고 `.env` 에 입력)
 - [ ] 프로젝트 소스 복사 또는 git clone
 - [ ] `pip install -r requirements.txt` (프로젝트 루트)
 - [ ] `pip install -r requirements.txt` (server/ 폴더)

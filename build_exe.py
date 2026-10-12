@@ -146,6 +146,7 @@ def build():
         "jose.jwt",
         "bcrypt",
         "mediapipe",
+        "ai_core.frame_analyzer",  # backend_db/api/gaze_ws.py 가 지연 import
         "customtkinter",
         "cv2",
         "PIL",
@@ -191,6 +192,9 @@ def build():
         os.remove(server_url_file)
 
     if result.returncode == 0:
+        # 앱은 EXE 옆의 _server_url.txt 를 읽는다 (PyInstaller 6 은 datas 를 _internal 에 넣음)
+        with open(os.path.join(dist_dir, "_server_url.txt"), "w", encoding="utf-8") as f:
+            f.write(server_url)
         is_remote = not any(h in server_url for h in ("127.0.0.1", "localhost"))
         print()
         print("=" * 60)

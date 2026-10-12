@@ -47,3 +47,7 @@ gaze_test_output/
 # OS
 Thumbs.db
 .DS_Store
+
+# E2E 테스트 산출물 (테스트 계정 비밀번호·웹캠 스크린샷 포함)
+tests/e2e/e2e_accounts.json
+tests/e2e/results/

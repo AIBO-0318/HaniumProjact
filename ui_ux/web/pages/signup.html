@@ -101,6 +101,10 @@
       });
     });
     document.getElementById("role").addEventListener("change", applyRole);
+
+    // 관리자 계정은 로그인한 관리자만 만들 수 있다 → 그 외에는 탭 없이 사용자 가입만 표시
+    const isAdminSession = !!Auth.getToken() && Auth.getInfo().account_type === "admin";
+    if (!isAdminSession) document.querySelector(".tabs").style.display = "none";
     applyTab();
 
     document.getElementById("signupForm").addEventListener("submit", async (e) => {
@@ -132,6 +136,9 @@
         } else {
           const level = parseInt(document.getElementById("level").value, 10);
           await Auth.adminSignup({ admin_id: loginId, password, name, level });
+          okEl.textContent = "관리자 계정을 만들었습니다. 홈으로 이동합니다…";
+          setTimeout(() => location.href = "/main", 1500);
+          return;
         }
         okEl.textContent = "가입 완료! 로그인 페이지로 이동합니다…";
         setTimeout(() => location.href = "/", 1500);

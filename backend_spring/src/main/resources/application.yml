@@ -11,10 +11,17 @@ server:
 spring:
   application:
     name: istudy-backend
+  # 비밀번호·JWT 키는 코드에 두지 않고 프로젝트 루트의 .env(깃 제외)에서 읽는다.
+  # bootRun 은 backend_spring 에서 실행되므로 ../.env, jar 를 루트에서 실행하면 ./.env
+  # OS 환경변수가 있으면 .env 보다 우선한다.
+  config:
+    import:
+      - optional:file:../.env[.properties]
+      - optional:file:./.env[.properties]
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:istudy}
     username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:aisw2026}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -29,8 +36,8 @@ spring:
 
 app:
   jwt:
-    # ⚠️ FastAPI(/ws/gaze)의 JWT_SECRET 과 반드시 동일해야 토큰 상호 검증이 됩니다.
-    secret: ${JWT_SECRET:i-study-beta-change-this-in-production-please}
+    # ⚠️ FastAPI(/ws/gaze)의 JWT_SECRET 과 반드시 동일해야 토큰 상호 검증이 됩니다. (32바이트 이상)
+    secret: ${JWT_SECRET}
     expire-minutes: 1440
   # 정적 웹(ui_ux/web) 루트. 기본은 backend_spring 기준 상위 폴더.
   web-root: ${WEB_ROOT:../ui_ux/web}

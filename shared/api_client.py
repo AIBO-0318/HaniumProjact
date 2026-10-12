@@ -30,10 +30,21 @@ def _auth_headers() -> dict:
     return {"Authorization": f"Bearer {_TOKEN}"} if _TOKEN else {}
 
 
-# ─── 화이트리스트 (레거시 /api/whitelist — 인증 불필요, 공통 기본 사이트) ───
+# ─── 화이트리스트 ───
+# 조회: 학생 로그인 시 /whitelist/effective (공통 기본 + 지도자가 지정한 학생 전용 — 웹 '내 화이트리스트'와 동일),
+#       그 외(교사·오프라인·실패)는 레거시 /api/whitelist (공통 기본, 인증 불필요)
+# 추가/삭제: 레거시 /api/whitelist — 관리자 토큰 필요
 
 def get_all_whitelist_urls() -> List[Tuple[int, str, str]]:
-    """서버에서 화이트리스트 조회 → [(id, name, url), ...]"""
+    """허용 사이트 조회 → [(id, name, url), ...]"""
+    if _TOKEN:
+        try:
+            res = requests.get(f"{API_BASE}/whitelist/effective",
+                               headers=_auth_headers(), timeout=_TIMEOUT)
+            if res.status_code == 200:
+                return [(item["id"], item["name"], item["url"]) for item in res.json()]
+        except Exception:
+            pass
     try:
         res = requests.get(f"{API_BASE}/api/whitelist", timeout=_TIMEOUT)
         res.raise_for_status()
@@ -48,6 +59,7 @@ def add_whitelist_url(name: str, url: str) -> bool:
         res = requests.post(
             f"{API_BASE}/api/whitelist",
             json={"name": name, "url": url},
+            headers=_auth_headers(),
             timeout=_TIMEOUT,
         )
         res.raise_for_status()
@@ -59,7 +71,11 @@ def add_whitelist_url(name: str, url: str) -> bool:
 def remove_whitelist_url(url_id: int) -> bool:
     """서버에서 화이트리스트 URL 삭제"""
     try:
-        res = requests.delete(f"{API_BASE}/api/whitelist/{url_id}", timeout=_TIMEOUT)
+        res = requests.delete(
+            f"{API_BASE}/api/whitelist/{url_id}",
+            headers=_auth_headers(),
+            timeout=_TIMEOUT,
+        )
         res.raise_for_status()
         return True
     except Exception:

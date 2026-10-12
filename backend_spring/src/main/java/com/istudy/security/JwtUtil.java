@@ -26,7 +26,11 @@ public class JwtUtil {
 
     public JwtUtil(@Value("${app.jwt.secret}") String secret,
                    @Value("${app.jwt.expire-minutes:1440}") long expireMinutes) {
-        this.key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length < 32) {
+            throw new IllegalStateException("JWT_SECRET 은 32바이트 이상이어야 합니다. 프로젝트 루트 .env 를 확인하세요.");
+        }
+        this.key = new SecretKeySpec(bytes, "HmacSHA256");
         this.expireMinutes = expireMinutes;
     }
 
