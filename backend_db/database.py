@@ -52,6 +52,10 @@ ensure_database()
 
 # 일부 환경은 postgres:// 로 제공 → SQLAlchemy는 postgresql:// 필요
 _db_url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+# SQLAlchemy 2.1 부터 postgresql:// 의 기본 드라이버가 psycopg(3) 로 바뀌어,
+# 설치된 psycopg2 를 명시한다 (Python 3.11+ 새 설치에서 AI 서버가 시작되지 않던 문제)
+if _db_url.startswith("postgresql://"):
+    _db_url = "postgresql+psycopg2://" + _db_url[len("postgresql://"):]
 engine = create_engine(_db_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
