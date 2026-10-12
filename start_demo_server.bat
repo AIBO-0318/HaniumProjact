@@ -1,6 +1,6 @@
 @echo off
 title I-Study Local Server (Demo)
-cd /d D:\I-Study\backend_db
+cd /d "%~dp0backend_db"
 echo ============================================
 echo  I-Study 로컬 서버 (시연용)
 echo  이 창을 닫지 마세요. 닫으면 로그인이 안 됩니다.
