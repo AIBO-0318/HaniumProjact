@@ -48,23 +48,26 @@ AI(실시간 시선추적)를 제외한 **모든 REST API + 정적 웹 서빙**�
 
 ## 3. 환경 변수 (`.env` 또는 OS 환경변수)
 
-`shared/env_config.py` 와 동일한 값을 사용합니다.
+프로젝트 루트의 `.env` 하나를 FastAPI(`shared/env_config.py`)와 Spring Boot 가 함께 읽습니다.
+`application.yml` 의 `spring.config.import` 가 `../.env` 를 불러오므로 따로 설정할 필요가 없습니다.
+`.env` 는 git 에 올라가지 않으며, 루트의 `.env.example` 을 복사해 만듭니다.
 
 ```
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
-DB_PASSWORD=aisw2026
+DB_PASSWORD=<PostgreSQL 설치 때 정한 비밀번호>
 DB_NAME=istudy
 
-# ⚠️ FastAPI(/ws/gaze)와 반드시 동일하게!
-JWT_SECRET=i-study-beta-change-this-in-production-please
+# ⚠️ FastAPI(/ws/gaze)와 같은 파일을 쓰므로 자동으로 동일
+JWT_SECRET=<32자 이상 임의 문자열>
 ```
 
-application.yml 은 위 환경변수를 읽으며, 없으면 기본값을 사용합니다.
+비밀번호·JWT 키는 코드에 기본값이 없습니다. `.env` 가 없으면
+`Could not resolve placeholder 'DB_PASSWORD'` 오류로 부팅이 멈춥니다.
+OS 환경변수로 같은 이름을 지정하면 `.env` 보다 우선합니다.
 
-> **JWT_SECRET 주의**: HS256 특성상 시크릿은 **32바이트 이상**이어야 합니다.
-> 기본값(44바이트)은 충족하지만, 짧은 값으로 바꾸면 부팅 시 오류가 납니다.
+> **JWT_SECRET 주의**: HS256 특성상 시크릿은 **32바이트 이상**이어야 하며, 짧으면 부팅 시 오류가 납니다.
 
 ---
 

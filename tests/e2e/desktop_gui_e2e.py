@@ -34,13 +34,12 @@ import ui_ux.desktop.app as appmod
 from ai_core.monitor import WhitelistMonitor
 from ui_ux.desktop.dialogs.calibration import CalibrationWindow
 from ui_ux.desktop.dialogs.login import LoginDialog
-from shared.env_config import API_SERVER_URL
+from shared.env_config import API_SERVER_URL, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 
 SCREENS = os.path.join(HERE, "results", "screens")
 os.makedirs(SCREENS, exist_ok=True)
 ACC = json.load(open(os.path.join(HERE, "e2e_accounts.json"), encoding="utf-8"))["student"]
-DB = dict(host="localhost", port=5432, dbname="istudy", user="postgres",
-          password=os.getenv("DB_PASSWORD", "aisw2026"))
+DB = dict(host=DB_HOST, port=DB_PORT, dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD)
 
 RESULTS, SIDE_EFFECTS, CALLBACK_ERRORS = [], [], []
 

@@ -24,10 +24,11 @@ import psycopg2
 import requests
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "..")))
+from shared.env_config import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 BASE = os.getenv("E2E_API", "http://127.0.0.1:8000")
 AI = os.getenv("E2E_AI", "127.0.0.1:8001")
-DB = dict(host="localhost", port=5432, dbname="istudy", user="postgres",
-          password=os.getenv("DB_PASSWORD", "aisw2026"))
+DB = dict(host=DB_HOST, port=DB_PORT, dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD)
 
 RESULTS = []
 

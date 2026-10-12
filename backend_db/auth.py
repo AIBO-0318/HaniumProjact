@@ -33,8 +33,13 @@ from models import User, Admin, UserRole
 # 설정
 # ─────────────────────────────────────────────
 
-# ⚠️ 운영 시 환경변수로 교체하세요. (예: os.getenv("JWT_SECRET"))
-SECRET_KEY = os.getenv("JWT_SECRET", "i-study-beta-change-this-in-production-please")
+# .env(또는 환경변수)의 JWT_SECRET — Spring Boot 와 같은 값이어야 토큰이 상호 검증된다.
+# 코드에 기본값을 두지 않는다 (database import 시 shared.env_config 가 .env 를 읽음).
+SECRET_KEY = os.getenv("JWT_SECRET", "")
+if len(SECRET_KEY.encode("utf-8")) < 32:
+    raise RuntimeError(
+        "JWT_SECRET 이 없거나 32바이트보다 짧습니다. "
+        "프로젝트 루트의 .env.example 을 .env 로 복사하고 JWT_SECRET 을 채우세요.")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 시간
 

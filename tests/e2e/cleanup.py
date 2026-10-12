@@ -10,8 +10,10 @@ import sys
 
 import psycopg2
 
-DB = dict(host="localhost", port=5432, dbname="istudy", user="postgres",
-          password=os.getenv("DB_PASSWORD", "aisw2026"))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from shared.env_config import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+
+DB = dict(host=DB_HOST, port=DB_PORT, dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD)
 PREFIX = r"qa\_e2e\_%"
 
 DEPENDENT = ["study_sessions", "schedules", "gaze_settings", "whitelist_urls"]

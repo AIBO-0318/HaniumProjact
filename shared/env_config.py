@@ -1,6 +1,9 @@
 """
 I-Study - 환경 설정 로더
 .env 파일 또는 환경변수에서 설정을 읽어옵니다.
+
+비밀번호·JWT 키는 코드에 기본값을 두지 않습니다 (저장소 공개 대비).
+프로젝트 루트의 .env.example 을 .env 로 복사해 값을 채우세요. (.env 는 git 제외)
 """
 
 import os
@@ -12,7 +15,7 @@ def _load_dotenv():
     env_path = Path(__file__).resolve().parent.parent / ".env"
     if not env_path.exists():
         return
-    with open(env_path, encoding="utf-8") as f:
+    with open(env_path, encoding="utf-8-sig") as f:  # 메모장 BOM 허용
         for line in f:
             line = line.strip()
             if not line or line.startswith("#"):
@@ -28,7 +31,7 @@ _load_dotenv()
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "aisw2026")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 DB_NAME = os.getenv("DB_NAME", "istudy")
 
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
@@ -38,7 +41,7 @@ SERVER_HOST = os.getenv("SERVER_HOST", "0.0.0.0")
 SERVER_PORT = int(os.getenv("SERVER_PORT", "8000"))
 
 # ─── JWT ───
-JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-this")
+JWT_SECRET = os.getenv("JWT_SECRET", "")
 
 # ─── API 서버 URL (EXE가 연결할 서버) ───
 # 빌드된 EXE 옆에 _server_url.txt 가 있으면 그 URL을 사용
