@@ -14,16 +14,17 @@
 
 ## 처음 실행하기 (서버 PC, Windows 10/11)
 
-아래 순서대로 따라 하면 됩니다. 명령은 모두 **PowerShell** 에서 프로젝트 폴더 기준으로 실행합니다.
+아래 순서대로 따라 하면 됩니다. 처음이면 프로그램 설치를 포함해 30분 정도 걸립니다.
+명령은 모두 **PowerShell**(시작 메뉴 → PowerShell)에 한 줄씩 붙여 넣고 Enter 로 실행합니다.
 
 ### 0. 설치할 것
 
 | 프로그램 | 버전 | 비고 |
 |----------|------|------|
-| [Python](https://www.python.org/downloads/) | 3.10 권장 | 설치 시 **Add python.exe to PATH** 체크 |
-| [JDK](https://adoptium.net/temurin/releases/?version=17) | **17** | 다른 버전(21 등)으로는 빌드되지 않음. 설치 시 **Set JAVA_HOME** 체크 |
-| [PostgreSQL](https://www.postgresql.org/download/windows/) | 14 이상 | 설치 중 정한 `postgres` 비밀번호를 기억해 두기 (2단계에서 사용) |
-| [Git](https://git-scm.com/download/win) | — | |
+| [Python](https://www.python.org/ftp/python/3.14.8/python-3.14.8-amd64.exe) | **3.10 ~ 3.14** | 링크는 3.14.8 설치 파일. 설치 첫 화면에서 **Add python.exe to PATH** 체크. **3.15 는 일부 패키지가 아직 지원하지 않아 설치가 실패할 수 있음** |
+| [JDK](https://adoptium.net/temurin/releases/?version=17) | **17** | 다른 버전(21 등)으로는 빌드되지 않음. 설치 화면의 **Set JAVA_HOME variable** 항목을 *Will be installed on local hard drive* 로 바꾸기 |
+| [PostgreSQL](https://www.postgresql.org/download/windows/) | 14 이상 | 설치 중 정한 `postgres` 비밀번호를 기억해 두기 (2단계에서 사용). 포트는 기본 5432 그대로, 마지막 Stack Builder 창은 닫아도 됨 |
+| [Git](https://git-scm.com/download/win) | — | 없으면 이 저장소 페이지의 **Code → Download ZIP** 으로 받아 압축을 풀고, 아래 `git clone` 대신 `cd` 로 그 폴더(`HaniumProjact-main`)에 들어가기 |
 | 웹캠 | — | 집중 모드에 필요 (없으면 집중 모드만 시작되지 않고 나머지는 사용 가능) |
 
 ### 1. 소스 받기 · 패키지 설치
@@ -31,10 +32,11 @@
 ```powershell
 git clone https://github.com/AIBO-0318/HaniumProjact.git
 cd HaniumProjact
-python -m venv venv
+py -3.14 -m venv venv
 venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
+`py -3.14` 의 숫자는 설치한 Python 버전에 맞추세요 (예: 3.10 이면 `py -3.10`, 설치된 버전은 `py --list` 로 확인).
 패키지 설치는 인터넷 속도에 따라 몇 분 걸립니다.
 
 ### 2. 설정 파일 `.env` 만들기
@@ -188,6 +190,8 @@ venv\Scripts\python.exe run_desktop.py
 
 | 증상 | 원인 · 해결 |
 |------|-------------|
+| `py` 명령을 찾을 수 없음 / `No suitable Python runtime found` | Python 이 없거나 버전 번호가 다름 → `py --list` 로 설치된 버전을 확인하고 그 번호로 실행 |
+| pip 설치 중 `Failed to build` / `Microsoft Visual C++ 14.0 is required` | Python 3.15 이상을 사용 → 3.14 를 설치하고 `venv` 폴더를 지운 뒤 1단계부터 다시 |
 | `.env 파일이 없습니다` (run_all.bat) | 2단계를 하지 않음 → `.env.example` 을 `.env` 로 복사 |
 | `Could not resolve placeholder 'JWT_SECRET'` / `'DB_PASSWORD'` (Spring 창) | `.env` 위치가 프로젝트 루트가 아니거나 키 이름이 틀림 |
 | `JWT_SECRET 이 없거나 32바이트보다 짧습니다` (AI 창) | `JWT_SECRET` 을 32자 이상으로 채우기 |
