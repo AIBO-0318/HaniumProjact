@@ -35,6 +35,8 @@ python -m venv venv
 venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
+패키지 설치는 인터넷 속도에 따라 몇 분 걸립니다.
+
 ### 2. 설정 파일 `.env` 만들기
 
 DB 비밀번호와 JWT 서명 키는 **코드에 넣지 않고 `.env` 파일에만** 적습니다.
@@ -85,8 +87,10 @@ venv\Scripts\python.exe init_db.py
 
 관리자가 **한 명도 없을 때만** 로그인 없이 만들 수 있습니다. 서버가 켜진 상태에서:
 
+`password` 값을 원하는 비밀번호(8자 이상)로 바꿔서 실행하세요. 웹 로그인 화면의 **관리자** 탭에서 이 아이디·비밀번호로 로그인합니다.
+
 ```powershell
-$body = '{"admin_id":"admin","password":"8자이상비밀번호","name":"관리자","level":9}'
+$body = '{"admin_id":"admin","password":"여기에비밀번호입력","name":"관리자","level":9}'
 Invoke-RestMethod -Uri "http://127.0.0.1:8000/admins/signup" -Method POST `
   -ContentType "application/json; charset=utf-8" `
   -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
@@ -94,6 +98,19 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8000/admins/signup" -Method POST `
 
 그 뒤로는 이 방법이 막히고(401), 관리자로 웹에 로그인한 상태에서 **회원가입 화면의 관리자 탭**으로만 추가할 수 있습니다
 (자신보다 높은 등급은 만들 수 없음).
+
+**모든 학생 공통 허용 사이트(기본 화이트리스트) 추가** — 웹 화면이 없어 관리자 토큰으로 API 를 호출합니다 (선택).
+학생별 허용 사이트는 웹의 **화이트리스트 관리** 화면에서 추가합니다.
+
+```powershell
+$login = '{"admin_id":"admin","password":"여기에비밀번호입력"}'
+$token = (Invoke-RestMethod -Uri "http://127.0.0.1:8000/admins/login" -Method POST -ContentType "application/json" -Body $login).access_token
+$site  = '{"name":"EBS","url":"https://www.ebs.co.kr/"}'
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/whitelist/admin/default" -Method POST `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -ContentType "application/json; charset=utf-8" `
+  -Body ([System.Text.Encoding]::UTF8.GetBytes($site))
+```
 
 ### 6. 웹에서 가입·로그인
 
@@ -107,7 +124,8 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8000/admins/signup" -Method POST `
 venv\Scripts\python.exe run_desktop.py
 ```
 
-학생 계정으로 로그인 → **집중 모드 시작**. 처음 실행할 때 시선 추적 모델(약 4MB)을 자동으로 내려받습니다.
+학생 계정으로 로그인 → 왼쪽의 **⚡ 집중 모드** 버튼을 누르면 시작합니다.
+처음 실행할 때 시선 추적 모델(약 4MB)을 자동으로 내려받습니다. 캘리브레이션은 웹캠 앞에 얼굴이 보여야 진행됩니다.
 
 > 웹캠이 없거나 다른 프로그램이 쓰고 있으면 *"집중 모드를 시작할 수 없습니다 — 웹캠을 열 수 없습니다"* 안내가 뜨고
 > 집중 모드는 시작되지 않습니다. 정상 동작이며, 웹캠을 연결한 뒤 다시 누르면 됩니다.
@@ -120,7 +138,7 @@ venv\Scripts\python.exe run_desktop.py
 |------|------|----------------------|-------------|
 | **학생** | 회원가입 화면 | 일정표, 학습 통계, 내 화이트리스트 확인, 마이페이지 | 집중 모드 (시선 추적·딴짓 사이트 차단) |
 | **학습지도자** | 회원가입 화면 (담당 학생 아이디 필요) | 학생 일정 조회, 학생 화이트리스트 관리 | — |
-| **관리자** | 5단계 참고 | 사용자 관리(승인·비활성화), 전체 학생 통계, 기본 허용 사이트 관리 | — |
+| **관리자** | 5단계 참고 | 사용자 관리(승인·비활성화), 전체 학생 통계·일정 조회, 학생별 화이트리스트 관리, 관리자 추가 | — |
 
 학습 통계와 화이트리스트는 **웹에서만** 보고 관리합니다. 데스크톱 앱은 집중 모드 전용입니다.
 
