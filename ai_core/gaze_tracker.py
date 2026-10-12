@@ -337,6 +337,9 @@ class GazeTracker:
             logger.info("Gaze tracking started successfully")
         except Exception as e:
             LoggerConfig.log_error(logger, "start", e)
+            if self.cap is not None:
+                self.cap.release()
+                self.cap = None
             raise
     
     def stop(self) -> dict:
