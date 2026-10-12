@@ -1,25 +1,26 @@
-# AI / 영상처리
+# Keep this file ASCII-only: pip on Korean Windows reads it as cp949.
+# AI / vision
 mediapipe>=0.10.0
 opencv-python>=4.8.0
 numpy>=1.24.0
 
-# 데스크톱 UI
+# Desktop UI
 customtkinter>=5.2.0
 Pillow>=10.0.0
 matplotlib>=3.7.0
 
-# 시스템 모니터링
+# System monitoring
 pyautogui>=0.9.54
 pygetwindow>=0.0.9
 psutil>=5.9.0
 
-# 백엔드 서버
+# Backend server (FastAPI AI service)
 fastapi>=0.100.0
 uvicorn[standard]>=0.23.0
 sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.0
 
-# 인증
+# Auth
 bcrypt>=4.0.0
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
